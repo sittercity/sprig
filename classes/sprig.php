@@ -195,16 +195,14 @@ abstract class Sprig {
 		return $changed;
 	}
 
-	public function fields($name = NULL)
+	public function field($name)
 	{
-		if ($name)
-		{
-			return $this->_fields[$name];
-		}
-		else
-		{
-			return $this->_fields;
-		}
+		return $this->_fields[$name];
+	}
+
+	public function fields()
+	{
+		return $this->_fields;
 	}
 
 	public function inputs($labels = FALSE)
