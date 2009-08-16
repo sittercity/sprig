@@ -2,8 +2,6 @@
 
 class Sprig_Field_Boolean extends Sprig_Field {
 
-	public $text = 'Yes';
-
 	public $empty = TRUE;
 
 	public $default = FALSE;
@@ -15,9 +13,14 @@ class Sprig_Field_Boolean extends Sprig_Field {
 		return parent::set((bool) $value);
 	}
 
+	public function verbose()
+	{
+		return $this->value ? 'Yes' : 'No';
+	}
+
 	public function input($name, array $attr = NULL)
 	{
-		return '<label>'.form::checkbox($name, 1, $this->value, $attr).' '.$this->text.'</label>';
+		return form::checkbox($name, 1, $this->value, $attr).' '.$this->label;
 	}
 
 } // End Sprig_Field_Boolean
