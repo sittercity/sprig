@@ -42,6 +42,11 @@ abstract class Sprig {
 
 	protected function __construct()
 	{
+		$this->init();
+	}
+
+	public function init()
+	{
 		foreach ($this->_fields as $name => $field)
 		{
 			if ($field->column === NULL)
