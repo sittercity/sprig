@@ -1,19 +1,40 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-
+/**
+ * Sprig database modeling system.
+ *
+ * @package    Sprig
+ * @author     Woody Gilk
+ * @copyright  (c) 2009 Woody Gilk
+ * @license    MIT
+ */
 abstract class Sprig {
 
+	/**
+	 * @var  string  database instance name
+	 */
 	protected $_db = 'default';
 
+	/**
+	 * @var  string  database table name
+	 */
 	protected $_table;
 
+	// Primary keys
 	protected $_primary_key = array();
 
+	// Field defitions
 	protected $_fields = array();
 
-	protected $_relations = array();
-
+	// Changed fields
 	protected $_changed = array();
 
+	/**
+	 * Load an empty sprig model.
+	 *
+	 * @param   string  model name
+	 * @param   array   values to pre-populate the model
+	 * @return  Sprig
+	 */
 	public static function factory($name, array $values = NULL)
 	{
 		static $models;
@@ -40,11 +61,21 @@ abstract class Sprig {
 		return $model;
 	}
 
+	/**
+	 * Calls the init() method. Sprig constructors are only called once!
+	 *
+	 * @return  void
+	 */
 	protected function __construct()
 	{
 		$this->init();
 	}
 
+	/**
+	 * Initialize the fields and add validation rules based on field properties.
+	 *
+	 * @return  void
+	 */
 	public function init()
 	{
 		foreach ($this->_fields as $name => $field)
@@ -98,6 +129,11 @@ abstract class Sprig {
 		}
 	}
 
+	/**
+	 * Clones each of the fields and empty the model.
+	 *
+	 * @return  void
+	 */
 	public function __clone()
 	{
 		foreach ($this->_fields as $name => $field)
@@ -108,6 +144,13 @@ abstract class Sprig {
 		$this->_changed = array();
 	}
 
+	/**
+	 * Get the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @return  mixed
+	 */
 	public function __get($field)
 	{
 		if (isset($this->_fields[$field]))
@@ -119,6 +162,14 @@ abstract class Sprig {
 			array(':name' => get_class($this), ':field' => $field));
 	}
 
+	/**
+	 * Set the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @param   mixed   new field value
+	 * @return  mixed
+	 */
 	public function __set($field, $value)
 	{
 		if (isset($this->_fields[$field]))
@@ -135,6 +186,12 @@ abstract class Sprig {
 			array(':name' => get_class($this), ':field' => $field));
 	}
 
+	/**
+	 * Load all of the values in an associative array.
+	 *
+	 * @param   array  field => value pairs
+	 * @return  $this
+	 */
 	public function values(array $values)
 	{
 		foreach ($values as $field => $value)
@@ -145,6 +202,11 @@ abstract class Sprig {
 		return $this;
 	}
 
+	/**
+	 * Get the model data as an associative array.
+	 *
+	 * @return  array  field => value
+	 */
 	public function as_array()
 	{
 		$data = array();
@@ -155,6 +217,13 @@ abstract class Sprig {
 		return $data;
 	}
 
+	/**
+	 * Get all of the records for this table as an associative array.
+	 *
+	 * @param   string  array key
+	 * @param   string  array value
+	 * @return  array   key => value
+	 */
 	public function select_list($key = 'id', $value = 'name')
 	{
 		return DB::select($key, $value)
@@ -163,6 +232,11 @@ abstract class Sprig {
 			->as_array($key, $value);
 	}
 
+	/**
+	 * Test if the model is loaded.
+	 *
+	 * @return  boolean
+	 */
 	public function loaded()
 	{
 		foreach($this->_primary_key as $field)
@@ -177,6 +251,11 @@ abstract class Sprig {
 		return TRUE;
 	}
 
+	/**
+	 * Get all of the changed fields as an associative array.
+	 *
+	 * @return  array  field => value
+	 */
 	public function changed()
 	{
 		$changed = array();
@@ -189,16 +268,32 @@ abstract class Sprig {
 		return $changed;
 	}
 
+	/**
+	 * Get a single field object.
+	 *
+	 * @return  Sprig_Field
+	 */
 	public function field($name)
 	{
 		return $this->_fields[$name];
 	}
 
+	/**
+	 * Get all fields as an associative array.
+	 *
+	 * @return  array  name => object
+	 */
 	public function fields()
 	{
 		return $this->_fields;
 	}
 
+	/**
+	 * Get all fields as an array of inputs.
+	 *
+	 * @param   boolean  use the input label as the array key
+	 * @return  array    label => input
+	 */
 	public function inputs($labels = TRUE)
 	{
 		$inputs = array();
@@ -223,6 +318,11 @@ abstract class Sprig {
 		return $inputs;
 	}
 
+	/**
+	 * Load a single record using the current data.
+	 *
+	 * @return  $this
+	 */
 	public function load()
 	{
 		if ($this->_changed)
@@ -256,6 +356,12 @@ abstract class Sprig {
 		return $this;
 	}
 
+	/**
+	 * Create a new record using the current data.
+	 *
+	 * @uses    Sprig::check()
+	 * @return  $this
+	 */
 	public function create()
 	{
 		if ($this->_changed)
@@ -293,6 +399,12 @@ abstract class Sprig {
 		return $this;
 	}
 
+	/**
+	 * Update the current record using the current data.
+	 *
+	 * @uses    Sprig::check()
+	 * @return  $this
+	 */
 	public function update()
 	{
 		if ($data = $this->changed())
@@ -325,6 +437,14 @@ abstract class Sprig {
 		return $this;
 	}
 
+	/**
+	 * Check the given data is valid. Only values that have editable fields
+	 * will be included and checked.
+	 *
+	 * @throws  Validate_Exception  when an error is found
+	 * @param   array  data to check, field => value
+	 * @return  array  filtered data
+	 */
 	public function check(array $data)
 	{
 		$data = Validate::factory($data);
@@ -360,6 +480,11 @@ abstract class Sprig {
 		return $data->as_array();
 	}
 
+	/**
+	 * Return all records matching the current data.
+	 *
+	 * @return  array
+	 */
 	public function all(array $conditions = NULL)
 	{
 		$query = DB::select("{$this->_table}.*")
