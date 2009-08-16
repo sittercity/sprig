@@ -4,12 +4,12 @@ class Sprig_Field_ForeignKey extends Sprig_Field_Integer {
 
 	public $null = TRUE;
 
+	public $model;
+
 	public function __construct(array $options = NULL)
 	{
-		$model = Sprig::factory($options['model']);
-
 		// Set the choices for this field
-		$this->choices = $model->select_list();
+		$this->choices = Sprig::factory($options['model'])->select_list();
 
 		parent::__construct($options);
 	}
