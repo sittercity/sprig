@@ -199,7 +199,7 @@ abstract class Sprig {
 		return $this->_fields;
 	}
 
-	public function inputs($labels = FALSE)
+	public function inputs($labels = TRUE)
 	{
 		$inputs = array();
 
