@@ -485,7 +485,7 @@ abstract class Sprig {
 	 *
 	 * @return  array
 	 */
-	public function all(array $conditions = NULL)
+	public function all()
 	{
 		$query = DB::select("{$this->_table}.*")
 			->from($this->_table);
@@ -495,15 +495,6 @@ abstract class Sprig {
 			foreach ($changed as $field => $value)
 			{
 				// Apply each changed value as a WHERE clause
-				$query->where($this->_fields[$field]->column, '=', $value);
-			}
-		}
-
-		if ($conditions)
-		{
-			foreach ($conditions as $field => $value)
-			{
-				// Apply each condition as a WHERE clause
 				$query->where($this->_fields[$field]->column, '=', $value);
 			}
 		}
