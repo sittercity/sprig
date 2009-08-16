@@ -85,12 +85,6 @@ abstract class Sprig {
 					$field->rules['in_array'] = array(array_keys($field->choices));
 				}
 
-				if ($field->unique)
-				{
-					// This field must be checked for uniqueness
-					$field->callbacks[] = array($this, 'unique_value');
-				}
-
 				if ( ! empty($field->min_length))
 				{
 					$field->rules['min_length'] = array($field->min_length);
