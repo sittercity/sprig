@@ -2,8 +2,6 @@
 
 class Sprig_Field_Integer extends Sprig_Field {
 
-	public $type = 'int';
-
 	public $default = 0;
 
 	public $min_value;
