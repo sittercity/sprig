@@ -52,8 +52,16 @@ abstract class Sprig_Field {
 
 	public function __clone()
 	{
-		// Set an empty value
-		$this->set(NULL);
+		if ($this->default !== NULL)
+		{
+			// Set the default value
+			$this->set($this->default);
+		}
+		else
+		{
+			// Set an empty value
+			$this->set(NULL);
+		}
 	}
 
 	public function get()
