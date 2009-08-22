@@ -217,11 +217,32 @@ abstract class Sprig {
 		}
 	}
 
-	public function pk()
+	/**
+	 * Returns the primary key of the model, optionally with a table name.
+	 *
+	 * @param   string  table name, TRUE for the model table
+	 * @return  string
+	 */
+	public function pk($table = FALSE)
 	{
+		if ($table)
+		{
+			if ($table === TRUE)
+			{
+				$table = $this->_table;
+			}
+
+			return $table.'.'.$this->_primary_key;
+		}
+
 		return $this->_primary_key;
 	}
 
+	/**
+	 * Returns the table name of the model.
+	 *
+	 * @return  string
+	 */
 	public function table()
 	{
 		return $this->_table;
