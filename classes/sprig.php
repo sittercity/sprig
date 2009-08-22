@@ -363,7 +363,8 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Load all of the values in an associative array.
+	 * Load all of the values in an associative array. Ignores all fields are
+	 * not in the model.
 	 *
 	 * @param   array    field => value pairs
 	 * @param   boolean  values are clean (from database)?
@@ -371,6 +372,9 @@ abstract class Sprig {
 	 */
 	public function values(array $values, $clean = FALSE)
 	{
+		// Remove all values which do not have a corresponding field
+		$values = array_intersect_key($values, $this->_fields);
+
 		foreach ($values as $field => $value)
 		{
 			if ($clean === TRUE)
