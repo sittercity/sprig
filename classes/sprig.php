@@ -365,8 +365,8 @@ abstract class Sprig {
 						$result = DB::select(array($model->field($model->pk())->column, $model->pk()))
 							->from($model->table())
 							->join($many->through)
-								->on($many->through.'.'.$model.'_'.$model->pk(), '=', $model->table().'.'.$model->field($model->pk())->column)
-							->where($many->through.'.'.$this.'_'.$this->_primary_key, '=', $this->{$this->_primary_key})
+								->on($model->fk($many->through), '=', $model->pk(TRUE))
+							->where($this->fk($many->through), '=', $this->{$this->_primary_key})
 							->execute($this->_db);
 
 						if (count($result))
