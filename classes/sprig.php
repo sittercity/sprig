@@ -19,14 +19,22 @@ abstract class Sprig {
 	 */
 	protected $_table;
 
-	// Primary keys
-	protected $_primary_key = array();
+	/**
+	 * @var  string  model name
+	 */
+	protected $_model;
+
+	// Primary key(s)
+	protected $_primary_key;
+
+	// Changed fields
+	protected $_changed = array();
 
 	// Field defitions
 	protected $_fields = array();
 
-	// Changed fields
-	protected $_changed = array();
+	// ManyToMany fields
+	protected $_many = array();
 
 	// Initialization status
 	protected $_init = FALSE;
@@ -67,11 +75,22 @@ abstract class Sprig {
 	/**
 	 * Calls the init() method. Sprig constructors are only called once!
 	 *
+	 * @param   string   model name
 	 * @return  void
 	 */
-	protected function __construct()
+	final protected function __construct()
 	{
 		$this->init();
+	}
+
+	/**
+	 * Returns the model name.
+	 *
+	 * @return  string
+	 */
+	final public function __toString()
+	{
+		return $this->_model;
 	}
 
 	/**
@@ -194,6 +213,16 @@ abstract class Sprig {
 		}
 	}
 
+	public function pk()
+	{
+		return $this->_primary_key;
+	}
+
+	public function table()
+	{
+		return $this->_table;
+	}
+
 	/**
 	 * Clones each of the fields and empty the model.
 	 *
@@ -225,7 +254,29 @@ abstract class Sprig {
 
 		if (isset($this->_fields[$field]))
 		{
-			return $this->_fields[$field]->get();
+			$field = $this->_fields[$field];
+
+			if ($field instanceof Sprig_Field_ManyToMany)
+			{
+				$model = Sprig::factory($field->model);
+
+				if ($ids = $field->get())
+				{
+					// Create a query to find all of related objects
+					$query = DB::select()->where($model->field($model->pk())->column, 'IN', $ids);
+
+					return $model->load($query, FALSE);
+				}
+				else
+				{
+					// Return an empty result set
+					return new Database_Result_Cached(array(), NULL, get_class($model));
+				}
+			}
+			else
+			{
+				return $field->get();
+			}
 		}
 
 		throw new Sprig_Exception(':name model does not have a field :field',
@@ -240,33 +291,73 @@ abstract class Sprig {
 	 * @param   mixed   new field value
 	 * @return  mixed
 	 */
-	public function __set($field, $value)
+	public function __set($name, $value)
 	{
 		if ( ! $this->_init)
 		{
-			if ($this->_fields[$field]->set($value))
+			$this->init();
+		}
+
+		if (isset($this->_fields[$name]))
+		{
+			$field = $this->_fields[$name];
+
+			if ($field->set($value))
 			{
-				$this->_changed[$field] = $field;
+				$this->_changed[$name] = $name;
+
+				if ($field->primary AND $this->_many)
+				{
+					foreach ($this->_many as $many)
+					{
+						$many = $this->_fields[$many];
+
+						$model = Sprig::factory($many->model);
+
+						$result = DB::select(array($model->field($model->pk())->column, $model->pk()))
+							->from($model->table())
+							->join($many->through)
+								->on($many->through.'.'.$model.'_'.$model->pk(), '=', $model->table().'.'.$model->field($model->pk())->column)
+							->where($many->through.'.'.$this.'_'.$this->_primary_key, '=', $this->{$this->_primary_key})
+							->execute($this->_db);
+
+						if (count($result))
+						{
+							// Update the many-to-many array of primary keys
+							$many->set($result->as_array(NULL, $model->pk()));
+						}
+					}
+				}
 			}
 
-			return $this->$field;
+			return $this->$name;
 		}
 
 		throw new Sprig_Exception(':name model does not have a field :field',
-			array(':name' => get_class($this), ':field' => $field));
+			array(':name' => get_class($this), ':field' => $name));
 	}
 
 	/**
 	 * Load all of the values in an associative array.
 	 *
-	 * @param   array  field => value pairs
+	 * @param   array    field => value pairs
+	 * @param   boolean  values are clean (from database)?
 	 * @return  $this
 	 */
-	public function values(array $values)
+	public function values(array $values, $clean = FALSE)
 	{
 		foreach ($values as $field => $value)
 		{
-			$this->$field = $value;
+			if ($clean === TRUE)
+			{
+				// Set the field directly
+				$this->_fields[$field]->set($value);
+			}
+			else
+			{
+				// Set the field using __set()
+				$this->$field = $value;
+			}
 		}
 
 		return $this;
@@ -280,10 +371,14 @@ abstract class Sprig {
 	public function as_array()
 	{
 		$data = array();
-		foreach ($this->_fields as $name => $field)
+
+		$fields = array_keys($this->_fields);
+
+		foreach ($fields as $field)
 		{
-			$data[$name] = $field->get();
+			$data[$field] = $this->$field;
 		}
+
 		return $data;
 	}
 
@@ -309,16 +404,23 @@ abstract class Sprig {
 	 */
 	public function loaded()
 	{
-		foreach($this->_primary_key as $field)
+		if (is_array($this->_primary_key))
 		{
-			if ( ! $this->$field)
+			foreach($this->_primary_key as $field)
 			{
-				// Empty primary key value, this record is not loaded
-				return FALSE;
+				if ( ! $this->$field)
+				{
+					// Empty primary key value, this record is not loaded
+					return FALSE;
+				}
 			}
+
+			return TRUE;
 		}
 
-		return TRUE;
+		$pk = $this->_primary_key;
+
+		return (bool) $this->$pk;
 	}
 
 	/**
@@ -393,37 +495,67 @@ abstract class Sprig {
 	 *
 	 * @return  $this
 	 */
-	public function load()
+	public function load(Database_Query $query = NULL, $limit = 1)
 	{
-		if ($this->_changed)
-		{
-			$query = DB::select("{$this->_table}.*")->from($this->_table)->limit(1);
+		$changed = $this->changed();
 
-			foreach ($this->changed() as $field => $value)
+		if ($query === NULL)
+		{
+			$query = DB::select();
+		}
+
+		$query->from($this->_table);
+
+		foreach ($this->_fields as $name => $field)
+		{
+			if ($field instanceof Sprig_Field_ManyToMany)
 			{
-				$query->where($this->_fields[$field]->column, '=', $value);
+				// Multiple relations cannot be loaded this way
+				continue;
 			}
 
-			$result = $query->execute($this->_db);
-
-			if (count($result))
+			if ($name === $field->column)
 			{
-				$result = $result->current();
+				$query->select($name);
+			}
+			else
+			{
+				$query->select(array($field->column, $name));
+			}
 
-				foreach ($this->_fields as $name => $field)
-				{
-					if (isset($result[$field->column]))
-					{
-						$field->set($result[$field->column]);
-					}
-				}
-
-				// No data has been changed
-				$this->_changed = array();
+			if (isset($changed[$name]))
+			{
+				$query->where($field->column, '=', $field->get());
 			}
 		}
 
-		return $this;
+		if ($limit)
+		{
+			$query->limit($limit);
+		}
+
+		if ($limit === 1)
+		{
+			$result = $query
+				->execute($this->_db);
+
+			if (count($result))
+			{
+				// Load the result
+				$this->values($result->current(), TRUE);
+
+				// Nothing has been changed
+				$this->_changed = array();
+			}
+
+			return $this;
+		}
+		else
+		{
+			return $query
+				->as_object(get_class($this))
+				->execute($this->_db);
+		}
 	}
 
 	/**
@@ -492,9 +624,16 @@ abstract class Sprig {
 			$query = DB::update($this->_table)
 				->set($values);
 
-			foreach ($this->_primary_key as $field)
+			if (is_array($this->_primary_key))
 			{
-				$query->where($this->_fields[$field]->column, '=', $this->$field);
+				foreach($this->_primary_key as $field)
+				{
+					$query->where($this->_fields[$field]->column, '=', $this->$field);
+				}
+			}
+			else
+			{
+				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->{$this->_primary_key});
 			}
 
 			if ($query->execute($this->_db))
@@ -515,8 +654,14 @@ abstract class Sprig {
 	 * @param   array  data to check, field => value
 	 * @return  array  filtered data
 	 */
-	public function check(array $data)
+	public function check(array $data = NULL)
 	{
+		if ($data === NULL)
+		{
+			// Use the current data set
+			$data = $this->changed();
+		}
+
 		$data = Validate::factory($data);
 
 		foreach ($this->_fields as $name => $field)
@@ -551,51 +696,11 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Return all records matching the current data.
+	 * Initialize the fields. This method will only be called once
+	 * by Sprig::init(). All models must define this method!
 	 *
-	 * @return  array
+	 * @return  void
 	 */
-	public function all()
-	{
-		$query = DB::select("{$this->_table}.*")
-			->from($this->_table);
-
-		if ($changed = $this->changed())
-		{
-			foreach ($changed as $field => $value)
-			{
-				// Apply each changed value as a WHERE clause
-				$query->where($this->_fields[$field]->column, '=', $value);
-			}
-		}
-
-		$result = $query->execute();
-
-		$all = array();
-
-		if (count($result))
-		{
-			foreach ($result as $row)
-			{
-				$values = array();
-
-				foreach ($this->_fields as $name => $field)
-				{
-					if (isset($row[$field->column]))
-					{
-						$values[$name] = $row[$field->column];
-					}
-				}
-
-				$all[] = $model = clone $this;
-
-				$model->values($values);
-
-				unset($model);
-			}
-		}
-
-		return $all;
-	}
+	abstract protected function _init();
 
 } // End Sprig
