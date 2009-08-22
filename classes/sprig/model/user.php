@@ -1,10 +1,20 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class Sprig_Model_User extends Sprig {
+abstract class Sprig_Model_User extends Sprig {
 
 	protected $_table = 'users';
 
-	public function init()
+	public function __set($field, $value)
+	{
+		if ($field === 'password')
+		{
+			$value = sha1($value);
+		}
+
+		return parent::__set($field, $value);
+	}
+
+	protected function _init()
 	{
 		$this->_fields += array(
 			'id' => new Sprig_Field_Auto,
@@ -19,8 +29,6 @@ class Sprig_Model_User extends Sprig {
 				'empty' => FALSE,
 			)),
 		);
-
-		parent::init();
 	}
 
 } // End User
