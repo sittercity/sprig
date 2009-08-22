@@ -10,6 +10,11 @@
 abstract class Sprig {
 
 	/**
+	 * @var  string  model name
+	 */
+	protected $_model;
+
+	/**
 	 * @var  string  database instance name
 	 */
 	protected $_db = 'default';
@@ -20,21 +25,20 @@ abstract class Sprig {
 	protected $_table;
 
 	/**
-	 * @var  string  model name
+	 * @var  array  field list (name => object)
 	 */
-	protected $_model;
-
-	// Primary key(s)
-	protected $_primary_key;
-
-	// Changed fields
-	protected $_changed = array();
-
-	// Field defitions
 	protected $_fields = array();
+
+	/**
+	 * @var  mixed  primary key string or array (for composite keys)
+	 */
+	protected $_primary_key;
 
 	// ManyToMany fields
 	protected $_many = array();
+
+	// Changed fields
+	protected $_changed = array();
 
 	// Initialization status
 	protected $_init = FALSE;
