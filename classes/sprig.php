@@ -239,6 +239,29 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Returns the foreign key of the model, optionally with a table name.
+	 *
+	 * @param   string  table name, TRUE for the model table
+	 * @return  string
+	 */
+	public function fk($table = FALSE)
+	{
+		$key = $this->_model.'_'.$this->_primary_key;
+
+		if ($table)
+		{
+			if ($table === TRUE)
+			{
+				$table = $this->_table;
+			}
+
+			return $table.'.'.$key;
+		}
+
+		return $key;
+	}
+
+	/**
 	 * Returns the table name of the model.
 	 *
 	 * @return  string
