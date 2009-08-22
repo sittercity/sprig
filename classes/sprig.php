@@ -461,6 +461,17 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Return a single field input.
+	 *
+	 * @param   string  field name
+	 * @return  string
+	 */
+	public function input($field)
+	{
+		return $this->_fields[$field]->input($field);
+	}
+
+	/**
 	 * Get all fields as an array of inputs.
 	 *
 	 * @param   boolean  use the input label as the array key
