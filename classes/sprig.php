@@ -28,6 +28,9 @@ abstract class Sprig {
 	// Changed fields
 	protected $_changed = array();
 
+	// Initialization status
+	protected $_init = FALSE;
+
 	/**
 	 * Load an empty sprig model.
 	 *
@@ -78,10 +81,58 @@ abstract class Sprig {
 	 */
 	public function init()
 	{
+		if ($this->_init)
+		{
+			// Can only be called once
+			return;
+		}
+
+		$this->_init = TRUE;
+
+		// Set up the fields
+		$this->_init();
+
+		if ( ! $this->_model)
+		{
+			// Set the model name based on the class name
+			$this->_model = strtolower(substr(get_class($this), 6));
+		}
+
+		if ( ! $this->_table)
+		{
+			// Set the table name to the plural model name
+			$this->_table = inflector::plural($this->_model);
+		}
+
+		foreach ($this->_fields as $name => $field)
+		{
+			if ($field->primary === TRUE)
+			{
+				if ( ! $this->_primary_key)
+				{
+					// This is the primary key
+					$this->_primary_key = $name;
+				}
+				else
+				{
+					if (is_string($this->_primary_key))
+					{
+						// More than one primary key found, create a list of keys
+						$this->_primary_key = array($this->_primary_key);
+					}
+
+					// Add this key to the list
+					$this->_primary_key[] = $name;
+				}
+			}
+		}
+
 		foreach ($this->_fields as $name => $field)
 		{
 			if ($field->column === NULL)
 			{
+				// Create the key based on the field name
+
 				if ($field instanceof Sprig_Field_ForeignKey)
 				{
 					$field->column = $name.'_id';
@@ -92,14 +143,28 @@ abstract class Sprig {
 				}
 			}
 
+			if ($field instanceof Sprig_Field_ManyToMany)
+			{
+				$this->_many[$name] = $name;
+
+				$model = Sprig::factory($field->model);
+
+				if ( ! $field->through)
+				{
+					// Use the both tables as the pivot
+					$tables = array($this->_table, $model->table());
+
+					// Sort the tables by name
+					sort($tables);
+
+					// Concat the tables using an underscore
+					$field->through = implode('_', $tables);
+				}
+			}
+
 			if ($field->label === NULL)
 			{
 				$field->label = Inflector::humanize($name);
-			}
-
-			if ($field->primary === TRUE)
-			{
-				$this->_primary_key[$name] = $name;
 			}
 
 			if ($field->editable)
@@ -153,6 +218,11 @@ abstract class Sprig {
 	 */
 	public function __get($field)
 	{
+		if ( ! $this->_init)
+		{
+			$this->init();
+		}
+
 		if (isset($this->_fields[$field]))
 		{
 			return $this->_fields[$field]->get();
@@ -172,7 +242,7 @@ abstract class Sprig {
 	 */
 	public function __set($field, $value)
 	{
-		if (isset($this->_fields[$field]))
+		if ( ! $this->_init)
 		{
 			if ($this->_fields[$field]->set($value))
 			{
@@ -382,7 +452,7 @@ abstract class Sprig {
 
 			foreach ($this->_primary_key as $field)
 			{
-				if ($this->_fields[$field] instanceof Spig_Field_Auto)
+				if ($this->_fields[$field] instanceof Sprig_Field_Auto)
 				{
 					// Set the auto-increment primary key to the insert id
 					$this->_fields[$field]->set($id);
