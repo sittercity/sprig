@@ -199,6 +199,12 @@ abstract class Sprig {
 					$field->rules['not_empty'] = NULL;
 				}
 
+				if ($field->unique)
+				{
+					// Field must be a unique value
+					$field->callbacks[] = array($this, '_unique_field');
+				}
+
 				if ($field->choices AND ! isset($field->rules['in_array']))
 				{
 					// Field must be one of the available choices
@@ -788,6 +794,30 @@ abstract class Sprig {
 		}
 
 		return $data->as_array();
+	}
+
+	/**
+	 * Callback for validating unique fields.
+	 *
+	 * @param   object  Validate array
+	 * @param   string  field name
+	 * @return  void
+	 */
+	public function _unique_field(Validate $array, $field)
+	{
+		if ($array[$field])
+		{
+			// Attempt to load a record
+			$model = clone $this;
+			$model->$field = $array[$field];
+			$model->load();
+
+			if ( ! $model->changed())
+			{
+				// Value is not unique
+				$array->error($field, 'unique');
+			}
+		}
 	}
 
 	/**
