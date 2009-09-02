@@ -171,6 +171,21 @@ abstract class Sprig {
 				}
 			}
 
+			if ($field instanceof Sprig_Field_ManyToMany)
+			{
+				if ($field->through === NULL)
+				{
+					// Create a list of model names
+					$table = array((string) $this, (string) Sprig::factory($field->model));
+
+					// Sort the table names alphabetically
+					sort($table);
+
+					// Set the pivot table name
+					$field->through = implode('_', $table);
+				}
+			}
+
 			if ($field->label === NULL)
 			{
 				$field->label = Inflector::humanize($name);
