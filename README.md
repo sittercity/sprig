@@ -8,7 +8,7 @@ Each model must:
 
 * extend the `Sprig` class
 * define the database table name
-* define a public `init()` method and set the field mappings
+* define a protected `_init()` method and set the field mappings
 
 Example of a model:
 
@@ -16,7 +16,7 @@ Example of a model:
         
         protected $_table = 'blog_posts';
         
-        public function init()
+        protected function _init()
         {
             $this->_fields += array(
                 'id' => new Sprig_Field_Auto,
@@ -30,8 +30,6 @@ Example of a model:
                 'body' => new Sprig_Field_Text,
                 'published' => new Sprig_Field_Boolean,
             );
-            
-            parent::init();
         }
         
     }
@@ -237,11 +235,25 @@ Extends `Sprig_Field_Integer`, but requires a valid UNIX timestamp as the value.
 
 Also has the `format` and `auto_now` properties.
 
-#### Sprig_Field_ForeignKey
+#### Sprig_Field_HasOne
 
-Extends `Sprig_Field_Integer`, but references another model. Represented by a select input.
+A reference to another model by the foreign model primary key value. Represented by a select input.
 
-Also has the `model` property, the name of another Sprig model.
+Has the `model` property, the name of another Sprig model.
 
 Implies `choices` will be set the the result of `$model->select_list()`.
+
+#### Sprig_Field_HasMany
+
+A reference to many other models by this model primary key value. Does not produce a form input.
+
+Has the `model` property, the name of another Sprig model.
+
+#### Sprig_Field_ManyToMany
+
+A reference to another model by a pivot table that contains the both primary keys. Does not produce a form input.
+
+Has the `model` property, the name of another Sprig model.
+
+Has the `through` property, the name of the pivot table. By default, uses both model names, sorted alphabetically and combined with an underscore. For example: a many-to-many relationship between `Model_Post` and `Model_Tag` would default to `post_tag` as the table name.
 
