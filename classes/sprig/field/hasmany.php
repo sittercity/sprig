@@ -1,14 +1,8 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
+class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public $default = array();
-
-	public $column = '';
-
-	public $through;
-
-	public $rules = array('is_array' => NULL);
 
 	public function set($value)
 	{
@@ -19,10 +13,10 @@ class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 	{
 		$inputs = array();
 
-		foreach ($this->choices as $value => $label)
-		{
-			$inputs[] = form::checkbox("{$name}[]", $value, in_array($value, $this->value)).' '.$label;
-		}
+		// foreach ($this->value)
+		// {
+		// 	$inputs[] = form::checkbox("{$name}[]", $value, in_array($value, $this->value));
+		// }
 
 		return $inputs;
 	}

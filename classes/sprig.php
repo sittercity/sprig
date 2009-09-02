@@ -10,40 +10,6 @@
 abstract class Sprig {
 
 	/**
-	 * @var  string  model name
-	 */
-	protected $_model;
-
-	/**
-	 * @var  string  database instance name
-	 */
-	protected $_db = 'default';
-
-	/**
-	 * @var  string  database table name
-	 */
-	protected $_table;
-
-	/**
-	 * @var  array  field list (name => object)
-	 */
-	protected $_fields = array();
-
-	/**
-	 * @var  mixed  primary key string or array (for composite keys)
-	 */
-	protected $_primary_key;
-
-	// ManyToMany fields
-	protected $_many = array();
-
-	// Changed fields
-	protected $_changed = array();
-
-	// Initialization status
-	protected $_init = FALSE;
-
-	/**
 	 * Load an empty sprig model.
 	 *
 	 * @param   string  model name
@@ -75,6 +41,40 @@ abstract class Sprig {
 
 		return $model;
 	}
+
+	/**
+	 * @var  string  model name
+	 */
+	protected $_model;
+
+	/**
+	 * @var  string  database instance name
+	 */
+	protected $_db = 'default';
+
+	/**
+	 * @var  string  database table name
+	 */
+	protected $_table;
+
+	/**
+	 * @var  array  field list (name => object)
+	 */
+	protected $_fields = array();
+
+	/**
+	 * @var  mixed  primary key string or array (for composite keys)
+	 */
+	protected $_primary_key;
+
+	// Changed fields
+	protected $_changed = array();
+
+	// Related objects
+	protected $_related = array();
+
+	// Initialization status
+	protected $_init = FALSE;
 
 	/**
 	 * Calls the init() method. Sprig constructors are only called once!
@@ -109,8 +109,6 @@ abstract class Sprig {
 			// Can only be called once
 			return;
 		}
-
-		$this->_init = TRUE;
 
 		// Set up the fields
 		$this->_init();
@@ -158,7 +156,14 @@ abstract class Sprig {
 
 				if ($field instanceof Sprig_Field_ForeignKey)
 				{
-					$field->column = $name.'_id';
+					if ($field instanceof Sprig_Field_HasOne)
+					{
+						$field->column = $name.'_id';
+					}
+					else
+					{
+						$field->column = $this->_model;
+					}
 				}
 				else
 				{
@@ -166,22 +171,15 @@ abstract class Sprig {
 				}
 			}
 
-			if ($field instanceof Sprig_Field_ManyToMany)
+			if ($field instanceof Sprig_Field_ForeignKey)
 			{
-				$this->_many[$name] = $name;
-
-				$model = Sprig::factory($field->model);
-
-				if ( ! $field->through)
+				if ($field instanceof Sprig_Field_HasOne)
 				{
-					// Use the both tables as the pivot
-					$tables = array($this->_table, $model->table());
-
-					// Sort the tables by name
-					sort($tables);
-
-					// Concat the tables using an underscore
-					$field->through = implode('_', $tables);
+					if ($field->choices === NULL)
+					{
+						// Load the choice list for this model
+						$field->choices = Sprig::factory($field->model)->select_list();
+					}
 				}
 			}
 
@@ -215,6 +213,8 @@ abstract class Sprig {
 				}
 			}
 		}
+
+		$this->_init = TRUE;
 	}
 
 	/**
@@ -293,33 +293,54 @@ abstract class Sprig {
 	 * @param   string  field name
 	 * @return  mixed
 	 */
-	public function __get($field)
+	public function __get($name)
 	{
 		if ( ! $this->_init)
 		{
 			$this->init();
 		}
 
-		if (isset($this->_fields[$field]))
+		if (isset($this->_fields[$name]))
 		{
-			$field = $this->_fields[$field];
+			$field = $this->_fields[$name];
 
-			if ($field instanceof Sprig_Field_ManyToMany)
+			if ($field instanceof Sprig_Field_ForeignKey)
 			{
-				$model = Sprig::factory($field->model);
-
-				if ($ids = $field->get())
+				if ( ! isset($this->_related[$name]))
 				{
-					// Create a query to find all of related objects
-					$query = DB::select()->where($model->field($model->pk())->column, 'IN', $ids);
+					// Load the related model
+					$model = Sprig::factory($field->model);
 
-					return $model->load($query, FALSE);
+					if ($field instanceof Sprig_Field_ManyToMany)
+					{
+						// Create a joining query
+						$query = DB::select()
+							->join($field->through)
+								->on($model->fk($field->through), '=', $model->pk(TRUE))
+							->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+
+						// Load all the related objects
+						$this->_related[$name] = $model->load($query, FALSE);
+					}
+					elseif ($field instanceof Sprig_Field_HasMany)
+					{
+						// Set the foreign key value
+						$model->values(array($field->column => $this->{$this->_primary_key}));
+
+						// Load all the related objects
+						$this->_related[$name] = $model->load(NULL, FALSE);
+					}
+					else
+					{
+						// Set the primary key value
+						$model->values(array($model->pk() => $field->get()));
+
+						// Load the related object
+						$this->_related[$name] = $model->load();
+					}
 				}
-				else
-				{
-					// Return an empty result set
-					return new Database_Result_Cached(array(), NULL, get_class($model));
-				}
+
+				return $this->_related[$name];
 			}
 			else
 			{
@@ -328,7 +349,7 @@ abstract class Sprig {
 		}
 
 		throw new Sprig_Exception(':name model does not have a field :field',
-			array(':name' => get_class($this), ':field' => $field));
+			array(':name' => get_class($this), ':field' => $name));
 	}
 
 	/**
@@ -354,27 +375,15 @@ abstract class Sprig {
 			{
 				$this->_changed[$name] = $name;
 
-				if ($field->primary AND $this->_many)
+				if ($field->primary)
 				{
-					foreach ($this->_many as $many)
-					{
-						$many = $this->_fields[$many];
-
-						$model = Sprig::factory($many->model);
-
-						$result = DB::select(array($model->field($model->pk())->column, $model->pk()))
-							->from($model->table())
-							->join($many->through)
-								->on($model->fk($many->through), '=', $model->pk(TRUE))
-							->where($this->fk($many->through), '=', $this->{$this->_primary_key})
-							->execute($this->_db);
-
-						if (count($result))
-						{
-							// Update the many-to-many array of primary keys
-							$many->set($result->as_array(NULL, $model->pk()));
-						}
-					}
+					// All object relations are wrong
+					$this->_related = array();
+				}
+				elseif ($field instanceof Sprig_Field_ForeignKey)
+				{
+					// Any related object will be the wrong
+					unset($this->_related[$name]);
 				}
 			}
 
@@ -571,7 +580,7 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field instanceof Sprig_Field_ManyToMany)
+			if ($field instanceof Sprig_Field_HasMany)
 			{
 				// Multiple relations cannot be loaded this way
 				continue;
@@ -703,6 +712,26 @@ abstract class Sprig {
 			{
 				// The database is now in sync
 				$this->_changed = array();
+			}
+		}
+
+		return $this;
+	}
+
+	public function delete()
+	{
+		if ($changed = $this->changed())
+		{
+			$query = DB::delete($this->_table);
+
+			foreach ($changed as $name => $value)
+			{
+				$query->where($this->_fields[$field]->column, '=', $value);
+			}
+
+			if ($query->execute($this->_db))
+			{
+				return clone $this;
 			}
 		}
 
