@@ -171,18 +171,6 @@ abstract class Sprig {
 				}
 			}
 
-			if ($field instanceof Sprig_Field_ForeignKey)
-			{
-				if ($field instanceof Sprig_Field_HasOne)
-				{
-					if ($field->choices === NULL)
-					{
-						// Load the choice list for this model
-						$field->choices = Sprig::factory($field->model)->select_list();
-					}
-				}
-			}
-
 			if ($field->label === NULL)
 			{
 				$field->label = Inflector::humanize($name);
