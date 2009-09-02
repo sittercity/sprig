@@ -6,7 +6,7 @@ abstract class Sprig_Model_User extends Sprig {
 
 	public function __set($field, $value)
 	{
-		if ($field === 'password')
+		if ($field === 'password' AND $value)
 		{
 			$value = sha1($value);
 		}
