@@ -504,7 +504,16 @@ abstract class Sprig {
 
 		foreach ($this->_changed as $field)
 		{
-			$changed[$field] = $this->$field;
+			if ($this->_fields[$field] instanceof Sprig_Field_ForeignKey)
+			{
+				// Bypass calling __get() for foreign keys
+				$changed[$field] = $this->_fields[$field]->get();
+			}
+			else
+			{
+				// Call __get() for all other fields
+				$changed[$field] = $this->$field;
+			}
 		}
 
 		return $changed;
