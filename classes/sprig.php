@@ -98,6 +98,128 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Clones each of the fields and empty the model.
+	 *
+	 * @return  void
+	 */
+	public function __clone()
+	{
+		foreach ($this->_fields as $name => $field)
+		{
+			$this->_fields[$name] = clone $field;
+		}
+
+		$this->_changed = array();
+	}
+
+	/**
+	 * Get the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @return  mixed
+	 */
+	public function __get($name)
+	{
+		if ( ! $this->_init)
+		{
+			$this->init();
+		}
+
+		if ( ! isset($this->_fields[$name]))
+		{
+			throw new Sprig_Exception(':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
+
+		// Get the field object
+		$field = $this->_fields[$name];
+
+		if ($field instanceof Sprig_Field_ForeignKey)
+		{
+			if ( ! isset($this->_related[$name]))
+			{
+				// Load the related model
+				$model = Sprig::factory($field->model);
+
+				if ($field instanceof Sprig_Field_ManyToMany)
+				{
+					// Create a joining query
+					$query = DB::select()
+						->join($field->through)
+							->on($model->fk($field->through), '=', $model->pk(TRUE))
+						->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+
+					// Load all the related objects
+					$this->_related[$name] = $model->load($query, FALSE);
+				}
+				elseif ($field instanceof Sprig_Field_HasMany)
+				{
+					// Set the foreign key value
+					$model->values(array($field->column => $this->{$this->_primary_key}));
+
+					// Load all the related objects
+					$this->_related[$name] = $model->load(NULL, FALSE);
+				}
+				else
+				{
+					// Set the primary key value
+					$model->values(array($model->pk() => $field->get()));
+
+					// Load the related object
+					$this->_related[$name] = $model->load();
+				}
+			}
+
+			return $this->_related[$name];
+		}
+		else
+		{
+			return $field->get();
+		}
+	}
+
+	/**
+	 * Set the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @param   mixed   new field value
+	 * @return  mixed
+	 */
+	public function __set($name, $value)
+	{
+		if ( ! $this->_init)
+		{
+			$this->init();
+		}
+
+		if ( ! isset($this->_fields[$name]))
+		{
+			throw new Sprig_Exception(':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
+
+		$field = $this->_fields[$name];
+
+		if ($field->set($value))
+		{
+			$this->_changed[$name] = $name;
+
+			if ($field->primary)
+			{
+				// All object relations are wrong
+				$this->_related = array();
+			}
+			elseif ($field instanceof Sprig_Field_ForeignKey)
+			{
+				// Any related object will be the wrong
+				unset($this->_related[$name]);
+			}
+		}
+	}
+
+	/**
 	 * Initialize the fields and add validation rules based on field properties.
 	 *
 	 * @return  void
@@ -278,129 +400,6 @@ abstract class Sprig {
 	public function table()
 	{
 		return $this->_table;
-	}
-
-	/**
-	 * Clones each of the fields and empty the model.
-	 *
-	 * @return  void
-	 */
-	public function __clone()
-	{
-		foreach ($this->_fields as $name => $field)
-		{
-			$this->_fields[$name] = clone $field;
-		}
-
-		$this->_changed = array();
-	}
-
-	/**
-	 * Get the value of a field.
-	 *
-	 * @throws  Sprig_Exception  field does not exist
-	 * @param   string  field name
-	 * @return  mixed
-	 */
-	public function __get($name)
-	{
-		if ( ! $this->_init)
-		{
-			$this->init();
-		}
-
-		if (isset($this->_fields[$name]))
-		{
-			$field = $this->_fields[$name];
-
-			if ($field instanceof Sprig_Field_ForeignKey)
-			{
-				if ( ! isset($this->_related[$name]))
-				{
-					// Load the related model
-					$model = Sprig::factory($field->model);
-
-					if ($field instanceof Sprig_Field_ManyToMany)
-					{
-						// Create a joining query
-						$query = DB::select()
-							->join($field->through)
-								->on($model->fk($field->through), '=', $model->pk(TRUE))
-							->where($this->fk($field->through), '=', $this->{$this->_primary_key});
-
-						// Load all the related objects
-						$this->_related[$name] = $model->load($query, FALSE);
-					}
-					elseif ($field instanceof Sprig_Field_HasMany)
-					{
-						// Set the foreign key value
-						$model->values(array($field->column => $this->{$this->_primary_key}));
-
-						// Load all the related objects
-						$this->_related[$name] = $model->load(NULL, FALSE);
-					}
-					else
-					{
-						// Set the primary key value
-						$model->values(array($model->pk() => $field->get()));
-
-						// Load the related object
-						$this->_related[$name] = $model->load();
-					}
-				}
-
-				return $this->_related[$name];
-			}
-			else
-			{
-				return $field->get();
-			}
-		}
-
-		throw new Sprig_Exception(':name model does not have a field :field',
-			array(':name' => get_class($this), ':field' => $name));
-	}
-
-	/**
-	 * Set the value of a field.
-	 *
-	 * @throws  Sprig_Exception  field does not exist
-	 * @param   string  field name
-	 * @param   mixed   new field value
-	 * @return  mixed
-	 */
-	public function __set($name, $value)
-	{
-		if ( ! $this->_init)
-		{
-			$this->init();
-		}
-
-		if (isset($this->_fields[$name]))
-		{
-			$field = $this->_fields[$name];
-
-			if ($field->set($value))
-			{
-				$this->_changed[$name] = $name;
-
-				if ($field->primary)
-				{
-					// All object relations are wrong
-					$this->_related = array();
-				}
-				elseif ($field instanceof Sprig_Field_ForeignKey)
-				{
-					// Any related object will be the wrong
-					unset($this->_related[$name]);
-				}
-			}
-
-			return $this->$name;
-		}
-
-		throw new Sprig_Exception(':name model does not have a field :field',
-			array(':name' => get_class($this), ':field' => $name));
 	}
 
 	/**
