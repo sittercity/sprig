@@ -663,15 +663,25 @@ abstract class Sprig {
 				->values($values)
 				->execute($this->_db);
 
-			foreach ($this->_primary_key as $field)
+			if (is_array($this->_primary_key))
 			{
-				if ($this->_fields[$field] instanceof Sprig_Field_Auto)
+				foreach ($this->_primary_key as $field)
 				{
-					// Set the auto-increment primary key to the insert id
-					$this->_fields[$field]->set($id);
+					if ($this->_fields[$field] instanceof Sprig_Field_Auto)
+					{
+						// Set the auto-increment primary key to the insert id
+						$this->_fields[$field]->set($id);
 
-					// There can only be 1 auto-increment column per model
-					break;
+						// There can only be 1 auto-increment column per model
+						break;
+					}
+				}
+			}
+			else
+			{
+				if ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
+				{
+					$this->_fields[$this->_primary_key]->set($id);
 				}
 			}
 
