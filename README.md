@@ -136,6 +136,20 @@ If you need the field name as the `inputs()` key instead of the label, use `FALS
     
     echo $inputs['title'];
 
+### Customizing the Form
+
+Creating custom forms can by done using the `input()` method to create place individual fields:
+
+    <div class="post-title">
+        <?php echo $post->input('title', array('class' => 'spellcheck fancy')) ?>
+    </div>
+    <div class="post-body">
+        <?php echo $toolbar ?>
+        <?php echo $post->input('body', array('class' => 'wysiwyg')) ?>
+    </div>
+
+This allows much finer control of how your forms are displayed, at gives control over what fields will be updated.
+
 ## Field Object Reference
 
 Accessing a field object is done using the `field()` method:

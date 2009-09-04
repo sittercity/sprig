@@ -543,11 +543,12 @@ abstract class Sprig {
 	 * Return a single field input.
 	 *
 	 * @param   string  field name
+	 * @param   array   input attributes
 	 * @return  string
 	 */
-	public function input($field)
+	public function input($field, array $attr = NULL)
 	{
-		return $this->_fields[$field]->input($field);
+		return $this->_fields[$field]->input($field, $attr);
 	}
 
 	/**
