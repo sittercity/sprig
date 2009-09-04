@@ -137,41 +137,7 @@ abstract class Sprig {
 
 		if ($field instanceof Sprig_Field_ForeignKey)
 		{
-			if ( ! isset($this->_related[$name]))
-			{
-				// Load the related model
-				$model = Sprig::factory($field->model);
-
-				if ($field instanceof Sprig_Field_ManyToMany)
-				{
-					// Create a joining query
-					$query = DB::select()
-						->join($field->through)
-							->on($model->fk($field->through), '=', $model->pk(TRUE))
-						->where($this->fk($field->through), '=', $this->{$this->_primary_key});
-
-					// Load all the related objects
-					$this->_related[$name] = $model->load($query, FALSE);
-				}
-				elseif ($field instanceof Sprig_Field_HasMany)
-				{
-					// Set the foreign key value
-					$model->values(array($field->column => $this->{$this->_primary_key}));
-
-					// Load all the related objects
-					$this->_related[$name] = $model->load(NULL, FALSE);
-				}
-				else
-				{
-					// Set the primary key value
-					$model->values(array($model->pk() => $field->get()));
-
-					// Load the related object
-					$this->_related[$name] = $model->load();
-				}
-			}
-
-			return $this->_related[$name];
+			return $this->related($name);
 		}
 		else
 		{
@@ -464,6 +430,61 @@ abstract class Sprig {
 			->from($this->_table)
 			->execute($this->_db)
 			->as_array($key, $value);
+	}
+
+	/**
+	 * Return the related object of a ForeignKey field.
+	 *
+	 * @param   string   field name
+	 * @return  object   Sprig instance for HasOne fields, Database_Result iterator for HasMany
+	 */
+	public function related($name)
+	{
+		// Check if the related value has been loaded already
+		if ( ! isset($this->_related[$name]))
+		{
+			// Load the field object
+			$field = $this->_fields[$name];
+
+			if ( ! $field instanceof Sprig_Field_ForeignKey)
+			{
+				throw new Sprig_Exception(':name model does not have a relation :field',
+					array(':name' => get_class($this), ':field' => $name));
+			}
+
+			// Load the related model
+			$model = Sprig::factory($field->model);
+
+			if ($field instanceof Sprig_Field_ManyToMany)
+			{
+				// Create a joining query
+				$query = DB::select()
+					->join($field->through)
+						->on($model->fk($field->through), '=', $model->pk(TRUE))
+					->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+
+				// Load all the related objects
+				$this->_related[$name] = $model->load($query, FALSE);
+			}
+			elseif ($field instanceof Sprig_Field_HasMany)
+			{
+				// Set the foreign key value
+				$model->values(array($field->column => $this->{$this->_primary_key}));
+
+				// Load all the related objects
+				$this->_related[$name] = $model->load(NULL, FALSE);
+			}
+			else
+			{
+				// Set the primary key value
+				$model->values(array($model->pk() => $field->get()));
+
+				// Load the related object
+				$this->_related[$name] = $model->load();
+			}
+		}
+
+		return $this->_related[$name];
 	}
 
 	/**
