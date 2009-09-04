@@ -20,6 +20,8 @@ abstract class Sprig_Field {
 
 	public $label;
 
+	public $description = '';
+
 	public $filters = array();
 
 	public $rules = array();

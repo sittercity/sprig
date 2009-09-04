@@ -192,6 +192,9 @@ column
 label
 :  Human readable label. Default will be the field name converted with `Inflector::humanize()`.
 
+description
+:  Description of the field. Default is `''` (an empty string).
+
 filters
 :  Validate filters for this field.
 
