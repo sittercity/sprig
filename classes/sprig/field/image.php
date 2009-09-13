@@ -47,8 +47,8 @@ class Sprig_Field_Image extends Sprig_Field_Char
 	{
 		$attr['type'] = 'file';
 		$r = Form::input($name, '', $attr);
-		if ($this->verbose() != '') {
-			$r .= HTML::image($this->path . $this->verbose());
+		if ($this->value != '') {
+			$r .= HTML::image($this->path . $this->value);
 		}
 		return $r;
 	}
