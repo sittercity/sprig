@@ -52,5 +52,12 @@ class Sprig_Field_Image extends Sprig_Field_Char
 		}
 		return $r;
 	}
+	
+	public function verbose()
+	{
+		// TODO: Include an option to display the image on listings pages?
+		//return HTML::image($this->path . $this->value);
+		return '/' . $this->path . $this->value;
+	}
 
 } // End Sprig_Field_Image
