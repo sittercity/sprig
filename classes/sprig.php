@@ -677,47 +677,57 @@ abstract class Sprig {
 	 */
 	public function create()
 	{
-		if ($this->_changed)
+		$data = array();
+		foreach ($this->_fields as $name => $field)
 		{
-			// Check the data
-			$data = $this->check($this->as_array());
-
-			$values = array();
-			foreach ($data as $field => $value)
+			if ($field instanceof Sprig_Field_Auto OR $field instanceof Sprig_Field_HasMany)
 			{
-				// Change the field name to the column name
-				$values[$this->_fields[$field]->column] = $value;
+				// Skip all automatically incremented and many relationships
+				continue;
 			}
 
-			list($id) = DB::insert($this->_table, array_keys($values))
-				->values($values)
-				->execute($this->_db);
-
-			if (is_array($this->_primary_key))
-			{
-				foreach ($this->_primary_key as $field)
-				{
-					if ($this->_fields[$field] instanceof Sprig_Field_Auto)
-					{
-						// Set the auto-increment primary key to the insert id
-						$this->_fields[$field]->set($id);
-
-						// There can only be 1 auto-increment column per model
-						break;
-					}
-				}
-			}
-			else
-			{
-				if ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
-				{
-					$this->_fields[$this->_primary_key]->set($id);
-				}
-			}
-
-			// No data has been changed
-			$this->_changed = array();
+			// Add the field value to the data set
+			$data[$name] = $this->$name;
 		}
+
+		// Check the data
+		$data = $this->check();
+
+		$values = array();
+		foreach ($data as $field => $value)
+		{
+			// Change the field name to the column name
+			$values[$this->_fields[$field]->column] = $value;
+		}
+
+		list($id) = DB::insert($this->_table, array_keys($values))
+			->values($values)
+			->execute($this->_db);
+
+		if (is_array($this->_primary_key))
+		{
+			foreach ($this->_primary_key as $field)
+			{
+				if ($this->_fields[$field] instanceof Sprig_Field_Auto)
+				{
+					// Set the auto-increment primary key to the insert id
+					$this->_fields[$field]->set($id);
+
+					// There can only be 1 auto-increment column per model
+					break;
+				}
+			}
+		}
+		else
+		{
+			if ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
+			{
+				$this->_fields[$this->_primary_key]->set($id);
+			}
+		}
+
+		// No data has been changed
+		$this->_changed = $this->_related = array();
 
 		return $this;
 	}
@@ -807,24 +817,26 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field->editable AND $data->offsetExists($name))
+			if ( ! $data->offsetExists($name))
 			{
-				$data->label($name, $field->label);
+				continue;
+			}
 
-				if ($field->filters)
-				{
-					$data->filters($name, $field->filters);
-				}
+			$data->label($name, $field->label);
 
-				if ($field->rules)
-				{
-					$data->rules($name, $field->rules);
-				}
+			if ($field->filters)
+			{
+				$data->filters($name, $field->filters);
+			}
 
-				if ($field->callbacks)
-				{
-					$data->callbacks($name, $field->callbacks);
-				}
+			if ($field->rules)
+			{
+				$data->rules($name, $field->rules);
+			}
+
+			if ($field->callbacks)
+			{
+				$data->callbacks($name, $field->callbacks);
 			}
 		}
 
