@@ -250,7 +250,7 @@ Extends `Sprig_Field_Char`, but requires a valid email address as the value.
 
 Extends `Sprig_Field_Integer`, but requires a valid UNIX timestamp as the value.
 
-Also has the `format` and `auto_now` properties.
+Also has the `format` and `auto_now_create` and `auto_now_update` properties.
 
 #### Sprig_Field_HasOne
 

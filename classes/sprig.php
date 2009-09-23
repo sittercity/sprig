@@ -686,6 +686,12 @@ abstract class Sprig {
 				continue;
 			}
 
+			if ($field instanceof Sprig_Field_Timestamp AND $field->auto_now_create)
+			{
+				// Set the value to the current timestamp
+				$this->$name = time();
+			}
+
 			// Add the field value to the data set
 			$data[$name] = $field->get();
 		}
@@ -740,8 +746,30 @@ abstract class Sprig {
 	 */
 	public function update()
 	{
-		if ($data = $this->changed())
+		if ($this->_changed)
 		{
+			$data = array();
+			foreach ($this->_fields as $name => $field)
+			{
+				if ($field instanceof Sprig_Field_Auto OR $field instanceof Sprig_Field_HasMany)
+				{
+					// Skip all automatically incremented and many relationships
+					continue;
+				}
+
+				if ($field instanceof Sprig_Field_Timestamp AND $field->auto_now_update)
+				{
+					// Set the value to the current timestamp
+					$this->$name = time();
+				}
+
+				if (isset($this->_changed[$name]))
+				{
+					// Add the field value to the data set
+					$data[$name] = $field->get();
+				}
+			}
+
 			// Check the data
 			$data = $this->check($data);
 

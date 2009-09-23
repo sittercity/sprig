@@ -2,7 +2,9 @@
 
 class Sprig_Field_Timestamp extends Sprig_Field_Integer {
 
-	public $auto_now = FALSE;
+	public $auto_now_create = FALSE;
+
+	public $auto_now_update = FALSE;
 
 	public $default = NULL;
 
