@@ -104,12 +104,12 @@ abstract class Sprig {
 	 */
 	public function __clone()
 	{
+		$this->_changed = $this->_related = array();
+
 		foreach ($this->_fields as $name => $field)
 		{
 			$this->_fields[$name] = clone $field;
 		}
-
-		$this->_changed = array();
 	}
 
 	/**
@@ -769,6 +769,9 @@ abstract class Sprig {
 
 			if ($query->execute($this->_db))
 			{
+				// Remove all changed values from related objects
+				$this->_related = array_diff_key($this->_related, $this->_changed);
+
 				// The database is now in sync
 				$this->_changed = array();
 			}
