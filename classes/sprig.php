@@ -687,11 +687,11 @@ abstract class Sprig {
 			}
 
 			// Add the field value to the data set
-			$data[$name] = $this->$name;
+			$data[$name] = $field->get();
 		}
 
 		// Check the data
-		$data = $this->check();
+		$data = $this->check($data);
 
 		$values = array();
 		foreach ($data as $field => $value)
@@ -819,6 +819,7 @@ abstract class Sprig {
 		{
 			if ( ! $data->offsetExists($name))
 			{
+				// Do not add any rules for this field
 				continue;
 			}
 
