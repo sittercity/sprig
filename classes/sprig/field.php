@@ -89,9 +89,14 @@ abstract class Sprig_Field {
 		return TRUE;
 	}
 
+	public function raw()
+	{
+		return $this->value;
+	}
+
 	public function verbose()
 	{
-		return (string) $this->value;
+		return (string) $this->raw();
 	}
 
 	public function input($name, array $attr = NULL)

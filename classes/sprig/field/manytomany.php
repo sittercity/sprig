@@ -15,6 +15,11 @@ class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 		return parent::set((array) $value);
 	}
 
+	public function raw()
+	{
+		return $this->value->as_array();
+	}
+
 	public function input($name, array $attr = NULL)
 	{
 		$inputs = array();

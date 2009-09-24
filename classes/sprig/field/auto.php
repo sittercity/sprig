@@ -6,4 +6,6 @@ class Sprig_Field_Auto extends Sprig_Field_Integer {
 
 	public $editable = FALSE;
 
+	public $null = TRUE;
+
 } // End Sprig_Field_Auto

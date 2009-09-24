@@ -32,11 +32,7 @@ abstract class Sprig {
 
 		if ($values)
 		{
-			foreach ($values as $field => $value)
-			{
-				// Set the initial values
-				$model->$field = $value;
-			}
+			$model->values($values);
 		}
 
 		return $model;
@@ -67,14 +63,14 @@ abstract class Sprig {
 	 */
 	protected $_primary_key;
 
-	// Changed fields
-	protected $_changed = array();
-
-	// Related objects
-	protected $_related = array();
-
 	// Initialization status
 	protected $_init = FALSE;
+
+	// Object loaded status
+	protected $_loaded = FALSE;
+
+	// Original object data
+	protected $_original = array();
 
 	/**
 	 * Calls the init() method. Sprig constructors are only called once!
@@ -104,12 +100,16 @@ abstract class Sprig {
 	 */
 	public function __clone()
 	{
-		$this->_changed = $this->_related = array();
+		// Object is being unloaded
+		$this->_loaded = FALSE;
 
 		foreach ($this->_fields as $name => $field)
 		{
 			$this->_fields[$name] = clone $field;
 		}
+
+		// Reset original data
+		$this->_original = $this->as_array();
 	}
 
 	/**
@@ -132,17 +132,7 @@ abstract class Sprig {
 				array(':name' => get_class($this), ':field' => $name));
 		}
 
-		// Get the field object
-		$field = $this->_fields[$name];
-
-		if ($field instanceof Sprig_Field_ForeignKey)
-		{
-			return $this->related($name);
-		}
-		else
-		{
-			return $field->get();
-		}
+		return $this->_fields[$name]->get();
 	}
 
 	/**
@@ -166,23 +156,23 @@ abstract class Sprig {
 				array(':name' => get_class($this), ':field' => $name));
 		}
 
+		// Get the field object
 		$field = $this->_fields[$name];
 
-		if ($field->set($value))
+		if ($field instanceof Sprig_Field_HasOne)
 		{
-			$this->_changed[$name] = $name;
+			if ( ! is_object($value))
+			{
+				// Load the a new model for this field
+				$model = Sprig::factory($field->model);
 
-			if ($field->primary)
-			{
-				// All object relations are wrong
-				$this->_related = array();
-			}
-			elseif ($field instanceof Sprig_Field_ForeignKey)
-			{
-				// Any related object will be the wrong
-				unset($this->_related[$name]);
+				// Load the new object by pk
+				$value = $model->values(array($model->pk() => $value))->load();
 			}
 		}
+
+		// Set the new field value
+		$field->set($value);
 	}
 
 	/**
@@ -373,26 +363,17 @@ abstract class Sprig {
 	 * not in the model.
 	 *
 	 * @param   array    field => value pairs
-	 * @param   boolean  values are clean (from database)?
 	 * @return  $this
 	 */
-	public function values(array $values, $clean = FALSE)
+	public function values(array $values)
 	{
 		// Remove all values which do not have a corresponding field
 		$values = array_intersect_key($values, $this->_fields);
 
 		foreach ($values as $field => $value)
 		{
-			if ($clean === TRUE)
-			{
-				// Set the field directly
-				$this->_fields[$field]->set($value);
-			}
-			else
-			{
-				// Set the field using __set()
-				$this->$field = $value;
-			}
+			// Set the field using __set()
+			$this->$field = $value;
 		}
 
 		return $this;
@@ -406,12 +387,19 @@ abstract class Sprig {
 	public function as_array()
 	{
 		$data = array();
-
-		$fields = array_keys($this->_fields);
-
-		foreach ($fields as $field)
+		foreach ($this->_fields as $name => $field)
 		{
-			$data[$field] = $this->$field;
+			if ($field instanceof Sprig_Field_ForeignKey)
+			{
+				// Use the non-object value for all foreign keys
+				$value = $field->raw();
+			}
+			else
+			{
+				$value = $field->get();
+			}
+
+			$data[$name] = $value;
 		}
 
 		return $data;
@@ -488,29 +476,13 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Test if the model is loaded.
+	 * Object data loaded status.
 	 *
 	 * @return  boolean
 	 */
 	public function loaded()
 	{
-		if (is_array($this->_primary_key))
-		{
-			foreach($this->_primary_key as $field)
-			{
-				if ( ! $this->$field)
-				{
-					// Empty primary key value, this record is not loaded
-					return FALSE;
-				}
-			}
-
-			return TRUE;
-		}
-
-		$pk = $this->_primary_key;
-
-		return (bool) $this->$pk;
+		return $this->_loaded;
 	}
 
 	/**
@@ -520,23 +492,7 @@ abstract class Sprig {
 	 */
 	public function changed()
 	{
-		$changed = array();
-
-		foreach ($this->_changed as $field)
-		{
-			if ($this->_fields[$field] instanceof Sprig_Field_ForeignKey)
-			{
-				// Bypass calling __get() for foreign keys
-				$changed[$field] = $this->_fields[$field]->get();
-			}
-			else
-			{
-				// Call __get() for all other fields
-				$changed[$field] = $this->$field;
-			}
-		}
-
-		return $changed;
+		return array_diff_assoc($this->as_array(), $this->_original);
 	}
 
 	/**
@@ -608,7 +564,14 @@ abstract class Sprig {
 	 */
 	public function load(Database_Query $query = NULL, $limit = 1)
 	{
+		// Load changed values as search parameters
 		$changed = $this->changed();
+
+		if ($query === NULL AND $limit === 1 AND empty($changed))
+		{
+			// No query needs to be executed
+			return $this;
+		}
 
 		if ($query === NULL)
 		{
@@ -634,9 +597,9 @@ abstract class Sprig {
 				$query->select(array($field->column, $name));
 			}
 
-			if (isset($changed[$name]))
+			if (array_key_exists($name, $changed))
 			{
-				$query->where($field->column, '=', $field->get());
+				$query->where($field->column, '=', $field->raw());
 			}
 		}
 
@@ -655,8 +618,11 @@ abstract class Sprig {
 				// Load the result
 				$this->values($result->current(), TRUE);
 
-				// Nothing has been changed
-				$this->_changed = array();
+				// Object data has been loaded
+				$this->_loaded = TRUE;
+
+				// Load the original data for this record
+				$this->_original = $this->as_array();
 			}
 
 			return $this;
@@ -677,24 +643,17 @@ abstract class Sprig {
 	 */
 	public function create()
 	{
-		$data = array();
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field instanceof Sprig_Field_Auto OR $field instanceof Sprig_Field_HasMany)
-			{
-				// Skip all automatically incremented and many relationships
-				continue;
-			}
-
 			if ($field instanceof Sprig_Field_Timestamp AND $field->auto_now_create)
 			{
 				// Set the value to the current timestamp
 				$this->$name = time();
 			}
-
-			// Add the field value to the data set
-			$data[$name] = $field->get();
 		}
+
+		// Load object data
+		$data = $this->as_array();
 
 		// Check the data
 		$data = $this->check($data);
@@ -702,8 +661,16 @@ abstract class Sprig {
 		$values = array();
 		foreach ($data as $field => $value)
 		{
+			$field = $this->_fields[$field];
+
+			if ($field instanceof Sprig_Field_Auto)
+			{
+				// Skip all auto-increment fields
+				continue;
+			}
+
 			// Change the field name to the column name
-			$values[$this->_fields[$field]->column] = $value;
+			$values[$field->column] = $value;
 		}
 
 		list($id) = DB::insert($this->_table, array_keys($values))
@@ -732,8 +699,8 @@ abstract class Sprig {
 			}
 		}
 
-		// No data has been changed
-		$this->_changed = $this->_related = array();
+		// Load the original data for this record
+		$this->_original = $this->as_array();
 
 		return $this;
 	}
@@ -746,32 +713,19 @@ abstract class Sprig {
 	 */
 	public function update()
 	{
-		if ($this->_changed)
+		if ($this->changed())
 		{
-			$data = array();
 			foreach ($this->_fields as $name => $field)
 			{
-				if ($field instanceof Sprig_Field_Auto OR $field instanceof Sprig_Field_HasMany)
-				{
-					// Skip all automatically incremented and many relationships
-					continue;
-				}
-
 				if ($field instanceof Sprig_Field_Timestamp AND $field->auto_now_update)
 				{
 					// Set the value to the current timestamp
 					$this->$name = time();
 				}
-
-				if (isset($this->_changed[$name]))
-				{
-					// Add the field value to the data set
-					$data[$name] = $field->get();
-				}
 			}
 
-			// Check the data
-			$data = $this->check($data);
+			// Check the updated data
+			$data = $this->check($this->changed());
 
 			$values = array();
 			foreach ($data as $field => $value)
@@ -787,21 +741,18 @@ abstract class Sprig {
 			{
 				foreach($this->_primary_key as $field)
 				{
-					$query->where($this->_fields[$field]->column, '=', $this->$field);
+					$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
 				}
 			}
 			else
 			{
-				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->{$this->_primary_key});
+				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
 			}
 
 			if ($query->execute($this->_db))
 			{
-				// Remove all changed values from related objects
-				$this->_related = array_diff_key($this->_related, $this->_changed);
-
-				// The database is now in sync
-				$this->_changed = array();
+				// Load the original data for this record
+				$this->_original = $this->as_array();
 			}
 		}
 
@@ -814,7 +765,7 @@ abstract class Sprig {
 		{
 			$query = DB::delete($this->_table);
 
-			foreach ($changed as $name => $value)
+			foreach ($changed as $field => $value)
 			{
 				$query->where($this->_fields[$field]->column, '=', $value);
 			}

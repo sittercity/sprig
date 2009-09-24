@@ -14,17 +14,27 @@ class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 
 	public function set($value)
 	{
-		if ($value instanceof Sprig)
+		if (is_object($value) AND is_object($this->value))
 		{
-			$value = $value->{$value->pk()};
+			if ($this->raw() === $value->{$value->pk()})
+			{
+				return FALSE;
+			}
 		}
 
-		return parent::set($value);
+		$this->value = $value;
+
+		return TRUE;
+	}
+
+	public function raw()
+	{
+		return $this->value ? $this->value->{$this->value->pk()} : parent::raw();
 	}
 
 	public function input($name, array $attr = NULL)
 	{
-		return form::select($name, $this->choices, $this->value);
+		return Form::select($name, $this->choices, $this->verbose());
 	}
 
 } // End Sprig_Field_HasOne
