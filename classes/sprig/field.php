@@ -1,5 +1,12 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-
+/**
+ * Basic Sprig_Field implementation.
+ *
+ * @package    Sprig
+ * @author     Woody Gilk
+ * @copyright  (c) 2009 Woody Gilk
+ * @license    MIT
+ */
 abstract class Sprig_Field {
 
 	public $empty = FALSE;

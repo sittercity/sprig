@@ -1,5 +1,12 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-
+/**
+ * Sprig boolean field.
+ *
+ * @package    Sprig
+ * @author     Woody Gilk
+ * @copyright  (c) 2009 Woody Gilk
+ * @license    MIT
+ */
 class Sprig_Field_Boolean extends Sprig_Field {
 
 	public $empty = TRUE;

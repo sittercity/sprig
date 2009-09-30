@@ -1,5 +1,12 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-
+/**
+ * Sprig "has one" relationship field.
+ *
+ * @package    Sprig
+ * @author     Woody Gilk
+ * @copyright  (c) 2009 Woody Gilk
+ * @license    MIT
+ */
 class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 
 	public function __construct(array $options = NULL)
