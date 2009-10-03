@@ -556,6 +556,18 @@ abstract class Sprig {
 
 		return $inputs;
 	}
+	
+	
+	/**
+	 * Return a single field label.
+	 *
+	 * @param   string  field name
+	 * @return  string
+	 */
+	public function label($field)
+	{
+		return $this->_fields[$field]->label;
+	}
 
 	/**
 	 * Load a single record using the current data.
@@ -634,6 +646,7 @@ abstract class Sprig {
 				->execute($this->_db);
 		}
 	}
+	
 
 	/**
 	 * Create a new record using the current data.
