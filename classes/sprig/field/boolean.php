@@ -14,6 +14,8 @@ class Sprig_Field_Boolean extends Sprig_Field {
 	public $default = FALSE;
 
 	public $filters = array('filter_var' => array(FILTER_VALIDATE_BOOLEAN));
+	
+	public $append_label = TRUE;
 
 	public function set($value)
 	{
@@ -27,7 +29,12 @@ class Sprig_Field_Boolean extends Sprig_Field {
 
 	public function input($name, array $attr = NULL)
 	{
-		return form::checkbox($name, 1, $this->value, $attr).' '.$this->label;
+		$checkbox = form::checkbox($name, 1, $this->value, $attr);
+		if( $this->append_label )
+		{
+			$checkbox .= ' '.$this->label;
+		} 
+		return  $checkbox;
 	}
 
 } // End Sprig_Field_Boolean
