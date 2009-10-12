@@ -594,7 +594,7 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field instanceof Sprig_Field_HasMany)
+			if ($field instanceof Sprig_Field_HasMany OR ! $field->in_db)
 			{
 				// Multiple relations cannot be loaded this way
 				continue;
