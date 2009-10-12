@@ -676,9 +676,9 @@ abstract class Sprig {
 		{
 			$field = $this->_fields[$field];
 
-			if ($field instanceof Sprig_Field_Auto)
+			if ($field instanceof Sprig_Field_Auto OR ! $field->in_db )
 			{
-				// Skip all auto-increment fields
+				// Skip all auto-increment fields or where in_db is false
 				continue;
 			}
 
@@ -743,8 +743,11 @@ abstract class Sprig {
 			$values = array();
 			foreach ($data as $field => $value)
 			{
-				// Change the field name to the column name
-				$values[$this->_fields[$field]->column] = $value;
+				if( $this->_fields[$field]->in_db )
+				{
+					// Change the field name to the column name
+					$values[$this->_fields[$field]->column] = $value;
+				}
 			}
 
 			$query = DB::update($this->_table)
