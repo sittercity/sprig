@@ -228,7 +228,7 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field->column === NULL)
+			if ( ! $field->column)
 			{
 				// Create the key based on the field name
 
@@ -251,7 +251,7 @@ abstract class Sprig {
 
 			if ($field instanceof Sprig_Field_ManyToMany)
 			{
-				if ($field->through === NULL)
+				if ( ! $field->through)
 				{
 					// Create a list of model names
 					$table = array((string) $this, (string) Sprig::factory($field->model));
@@ -264,7 +264,7 @@ abstract class Sprig {
 				}
 			}
 
-			if ($field->label === NULL)
+			if ( ! $field->label)
 			{
 				$field->label = Inflector::humanize($name);
 			}
