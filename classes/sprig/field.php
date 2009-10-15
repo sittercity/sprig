@@ -28,7 +28,7 @@ abstract class Sprig_Field {
 	public $label;
 
 	public $description = '';
-	
+
 	public $in_db = TRUE;
 
 	public $filters = array();
