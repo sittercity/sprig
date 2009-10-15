@@ -618,6 +618,17 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Return a single field value in verbose form.
+	 *
+	 * @param   string  field name
+	 * @return  string
+	 */
+	public function verbose($field)
+	{
+		return $this->_fields[$field]->verbose();
+	}
+
+	/**
 	 * Load a single record using the current data.
 	 *
 	 * @return  $this
