@@ -9,6 +9,9 @@
  */
 abstract class Sprig {
 
+	// Model many-to-many relations
+	protected static $_relations;
+
 	/**
 	 * Load an empty sprig model.
 	 *
@@ -137,6 +140,11 @@ abstract class Sprig {
 				array(':name' => get_class($this), ':field' => $name));
 		}
 
+		if ($this->_fields[$name] instanceof Sprig_Field_HasMany)
+		{
+			return $this->related($name);
+		}
+
 		return $this->_fields[$name]->get();
 	}
 
@@ -258,14 +266,33 @@ abstract class Sprig {
 			{
 				if ( ! $field->through)
 				{
-					// Create a list of model names
-					$table = array((string) $this, (string) Sprig::factory($field->model));
+					// Get the model names for the relation pair
+					$pair = array(strtolower($this->_model), strtolower($field->model));
 
-					// Sort the table names alphabetically
-					sort($table);
+					// Sort the model names alphabetically
+					sort($pair);
 
-					// Set the pivot table name
-					$field->through = implode('_', $table);
+					// Join the model names to get the relation name
+					$pair = implode('_', $pair);
+
+					if ( ! isset(Sprig::$_relations[$pair]))
+					{
+						// Must set the pair key before loading the related model
+						// or we will fall into an infinite recursion loop
+						Sprig::$_relations[$pair] = TRUE;
+
+						$tables = array($this->table(), Sprig::factory($field->model)->table());
+
+						// Sort the table names alphabetically
+						sort($tables);
+
+						// Join the table names to get the table name
+						Sprig::$_relations[$pair] = implode('_', $tables);
+					}
+
+					// Assign by reference so that changes to the relationship
+					// will carry over to all models
+					$field->through =& Sprig::$_relations[$pair];
 				}
 			}
 
@@ -476,18 +503,16 @@ abstract class Sprig {
 	 */
 	public function related($name)
 	{
-		// Check if the related value has been loaded already
-		if ( ! isset($this->_related[$name]))
+		$field = $this->_fields[$name];
+
+		if ( ! $field instanceof Sprig_Field_HasMany)
 		{
-			// Load the field object
-			$field = $this->_fields[$name];
+			throw new Sprig_Exception(':name model does not have a relation :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
 
-			if ( ! $field instanceof Sprig_Field_ForeignKey)
-			{
-				throw new Sprig_Exception(':name model does not have a relation :field',
-					array(':name' => get_class($this), ':field' => $name));
-			}
-
+		if ( ! $field->get())
+		{
 			// Load the related model
 			$model = Sprig::factory($field->model);
 
@@ -500,27 +525,22 @@ abstract class Sprig {
 					->where($this->fk($field->through), '=', $this->{$this->_primary_key});
 
 				// Load all the related objects
-				$this->_related[$name] = $model->load($query, FALSE);
+				$result = $model->load($query, FALSE);
 			}
-			elseif ($field instanceof Sprig_Field_HasMany)
+			else
 			{
 				// Set the foreign key value
 				$model->values(array($field->column => $this->{$this->_primary_key}));
 
-				// Load all the related objects
-				$this->_related[$name] = $model->load(NULL, FALSE);
+				// Load all related objects
+				$result = $model->load(NULL, FALSE);
 			}
-			else
-			{
-				// Set the primary key value
-				$model->values(array($model->pk() => $field->get()));
 
-				// Load the related object
-				$this->_related[$name] = $model->load();
-			}
+			// Change the field value to the result value
+			$field->set($result);
 		}
 
-		return $this->_related[$name];
+		return $field->get();
 	}
 
 	/**
@@ -604,8 +624,7 @@ abstract class Sprig {
 
 		return $inputs;
 	}
-	
-	
+
 	/**
 	 * Return a single field label.
 	 *
@@ -705,7 +724,7 @@ abstract class Sprig {
 				->execute($this->_db);
 		}
 	}
-	
+
 
 	/**
 	 * Create a new record using the current data.
