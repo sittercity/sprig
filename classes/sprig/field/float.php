@@ -13,8 +13,7 @@ class Sprig_Field_Float extends Sprig_Field {
 
 	public function set($value)
 	{
-		$value = (float) $value;
-		return parent::set($value);
+		return parent::set((float) $value);
 	}
 	
 	public function verbose()
