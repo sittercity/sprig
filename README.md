@@ -188,6 +188,8 @@ choices
 column
 :  Database column name for this field. Default will be the same as the field name,
    except for foreign keys, which will use the field name with `_id` appended.
+   In the case of HasMany fields, this value is the column name that contains the
+   foreign key value.
 
 label
 :  Human readable label. Default will be the field name converted with `Inflector::humanize()`.
@@ -252,13 +254,17 @@ Extends `Sprig_Field_Integer`, but requires a valid UNIX timestamp as the value.
 
 Also has the `format` and `auto_now_create` and `auto_now_update` properties.
 
+#### Sprig_Field_Image
+
+Extends `Sprig_Field_Char`, represents an image file.
+
+Also has the `path` property, the path to the directory where images will be stored.
+
 #### Sprig_Field_HasOne
 
 A reference to another model by the foreign model primary key value. Represented by a select input.
 
 Has the `model` property, the name of another Sprig model.
-
-Implies `choices` will be set the the result of `$model->select_list()`.
 
 #### Sprig_Field_HasMany
 
@@ -266,9 +272,11 @@ A reference to many other models by this model primary key value. Does not produ
 
 Has the `model` property, the name of another Sprig model.
 
+Uses the `column` property to define the related column name. For instance, if you have a `users.id` primary key and a `blog_posts.user_id` field, then the `column` value for `blog_post->user` wouldbe `user_id`.
+
 #### Sprig_Field_ManyToMany
 
-A reference to another model by a pivot table that contains the both primary keys. Does not produce a form input.
+A reference to another model by a pivot table that contains the both primary keys.
 
 Has the `model` property, the name of another Sprig model.
 
