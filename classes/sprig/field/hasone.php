@@ -9,16 +9,6 @@
  */
 class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 
-	public function __construct(array $options = NULL)
-	{
-		parent::__construct($options);
-
-		if ($this->choices === NULL)
-		{
-			$this->choices = Sprig::factory($this->model)->select_list();
-		}
-	}
-
 	public function set($value)
 	{
 		if (is_object($value) AND is_object($this->value))
