@@ -63,6 +63,11 @@ abstract class Sprig {
 	 */
 	protected $_primary_key;
 
+	/**
+	 * @var  string  title key string (for select lists)
+	 */
+	protected $_title_key = 'name';
+
 	// Initialization status
 	protected $_init = FALSE;
 
@@ -349,6 +354,27 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Returns the title key of the model, optionally with a table name.
+	 *
+	 * @param   string  table name, TRUE for the model table
+	 * @return  string
+	 */
+	public function tk($table = FALSE)
+	{
+		if ($table)
+		{
+			if ($table === TRUE)
+			{
+				$table = $this->_table;
+			}
+
+			return $table.'.'.$this->_title_key;
+		}
+
+		return $this->_title_key;
+	}
+
+	/**
 	 * Returns the table name of the model.
 	 *
 	 * @return  string
@@ -408,12 +434,22 @@ abstract class Sprig {
 	/**
 	 * Get all of the records for this table as an associative array.
 	 *
-	 * @param   string  array key
-	 * @param   string  array value
+	 * @param   string  array key, defaults to the primary key
+	 * @param   string  array value, defaults to the title key
 	 * @return  array   key => value
 	 */
-	public function select_list($key = 'id', $value = 'name')
+	public function select_list($key = NULL, $value = NULL)
 	{
+		if ( ! $key)
+		{
+			$key = $this->pk();
+		}
+
+		if ( ! $value)
+		{
+			$value = $this->tk();
+		}
+
 		return DB::select($key, $value)
 			->from($this->_table)
 			->execute($this->_db)
