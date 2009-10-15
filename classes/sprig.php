@@ -410,18 +410,30 @@ abstract class Sprig {
 	 *
 	 * @return  array  field => value
 	 */
-	public function as_array()
+	public function as_array($verbose = FALSE)
 	{
 		$data = array();
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field instanceof Sprig_Field_ForeignKey)
+			if ($verbose === TRUE)
+			{
+				if ($field instanceof Sprig_Field_HasMany)
+				{
+					// Make sure the value is loaded
+					$this->$name;
+				}
+
+				// Get the verbose value
+				$value = $field->verbose();
+			}
+			elseif ($field instanceof Sprig_Field_ForeignKey)
 			{
 				// Use the non-object value for all foreign keys
 				$value = $field->raw();
 			}
 			else
 			{
+				// Get the normal value
 				$value = $field->get();
 			}
 
