@@ -13,7 +13,7 @@ class Sprig_Field_Password extends Sprig_Field_Char {
 
 	public function input($name, array $attr = NULL)
 	{
-		return Form::password($name, '', $attr);
+		return Form::password($name, NULL, $attr);
 	}
 
 } // End Sprig_Field_Password
