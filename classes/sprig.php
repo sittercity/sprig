@@ -137,6 +137,10 @@ abstract class Sprig {
 		if ( ! $this->_init)
 		{
 			$this->init();
+
+			// Loaded status must be changed, this object is being created by
+			// mysql_fetch_object() or similar
+			$this->_loaded = TRUE;
 		}
 
 		if ( ! isset($this->_fields[$name]))
@@ -166,6 +170,10 @@ abstract class Sprig {
 		if ( ! $this->_init)
 		{
 			$this->init();
+
+			// Loaded status must be changed, this object is being created by
+			// mysql_fetch_object() or similar
+			$this->_loaded = TRUE;
 		}
 
 		if ( ! isset($this->_fields[$name]))
