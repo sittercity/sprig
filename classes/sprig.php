@@ -71,6 +71,11 @@ abstract class Sprig {
 	 */
 	protected $_title_key = 'name';
 
+	/**
+	 * @var  array  default sorting parameters
+	 */
+	protected $_sorting;
+
 	// Initialization status
 	protected $_init = FALSE;
 
@@ -497,8 +502,18 @@ abstract class Sprig {
 			$value = $this->tk();
 		}
 
-		return DB::select($key, $value)
-			->from($this->_table)
+		$query = DB::select($key, $value)
+			->from($this->_table);
+
+		if ($this->_sorting)
+		{
+			foreach ($this->_sorting as $field => $direction)
+			{
+				$query->order_by($field, $direction);
+			}
+		}
+
+		return $query
 			->execute($this->_db)
 			->as_array($key, $value);
 	}
@@ -727,6 +742,14 @@ abstract class Sprig {
 		}
 		else
 		{
+			if ($this->_sorting)
+			{
+				foreach ($this->_sorting as $field => $direction)
+				{
+					$query->order_by($field, $direction);
+				}
+			}
+
 			return $query
 				->as_object(get_class($this))
 				->execute($this->_db);
