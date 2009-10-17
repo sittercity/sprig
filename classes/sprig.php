@@ -149,12 +149,14 @@ abstract class Sprig {
 				array(':name' => get_class($this), ':field' => $name));
 		}
 
-		if ($this->_fields[$name] instanceof Sprig_Field_HasMany)
+		$field = $this->_fields[$name];
+
+		if ($field instanceof Sprig_Field_HasMany)
 		{
-			return $this->related($name);
+			return $field->load();
 		}
 
-		return $this->_fields[$name]->get();
+		return $field->get();
 	}
 
 	/**
@@ -204,9 +206,36 @@ abstract class Sprig {
 				$value = call_user_func($field->hash_with, $value);
 			}
 		}
+		elseif ($field instanceof Sprig_Field_HasMany)
+		{
+			if (is_object($value))
+			{
+				$model = Sprig::factory($field->model);
+				$value = $value->as_array($model->pk(), $model->pk());
+			}
+			elseif (is_array($value))
+			{
+				$value = array_combine($value, $value);
+			}
+		}
 
 		// Set the new field value
 		$field->set($value);
+
+		if ($field->primary)
+		{
+			foreach ($this->_fields as $n => $f)
+			{
+				if ($f instanceof Sprig_Field_HasMany)
+				{
+					// When the primary key changes, load new relationships
+					$f->set($r = $this->related($n));
+
+					// Set the original value for this relationship
+					$this->_original[$n] = $r;
+				}
+			}
+		}
 	}
 
 	/**
@@ -465,12 +494,6 @@ abstract class Sprig {
 		{
 			if ($verbose === TRUE)
 			{
-				if ($field instanceof Sprig_Field_HasMany)
-				{
-					// Make sure the value is loaded
-					$this->$name;
-				}
-
 				// Get the verbose value
 				$value = $field->verbose();
 			}
@@ -549,23 +572,19 @@ abstract class Sprig {
 
 			if ($field instanceof Sprig_Field_ManyToMany)
 			{
-				// Create a joining query
-				$query = DB::select()
-					->join($field->through)
-						->on($model->fk($field->through), '=', $model->pk(TRUE))
-					->where($this->fk($field->through), '=', $this->{$this->_primary_key});
-
-				// Load all the related objects
-				$result = $model->load($query, FALSE);
+				$query = DB::select(array($model->fk(), $model->pk()))
+					->from($field->through);
 			}
 			else
 			{
-				// Set the foreign key value
-				$model->values(array($field->column => $this->{$this->_primary_key}));
-
-				// Load all related objects
-				$result = $model->load(NULL, FALSE);
+				$query = DB::select($model->pk())
+					->from($model->table());
 			}
+
+			$result = $query
+				->where($this->fk(), '=', $this->{$this->_primary_key})
+				->execute($this->_db)
+				->as_array($model->pk(), $model->pk());
 
 			// Change the field value to the result value
 			$field->set($result);
@@ -875,35 +894,86 @@ abstract class Sprig {
 			// Check the updated data
 			$data = $this->check($this->changed());
 
-			$values = array();
-			foreach ($data as $field => $value)
+			$values = $relations = array();
+			foreach ($data as $name => $value)
 			{
-				if( $this->_fields[$field]->in_db )
+				$field = $this->_fields[$name];
+
+				if ($field->in_db)
 				{
-					// Change the field name to the column name
-					$values[$this->_fields[$field]->column] = $value;
+					if ($field instanceof Sprig_Field_HasMany)
+					{
+						if ($field instanceof Sprig_Field_ManyToMany)
+						{
+							$relations[$name] = (array) $value;
+						}
+					}
+					else
+					{
+						// Change the field name to the column name
+						$values[$field->column] = $value;
+					}
 				}
 			}
 
-			$query = DB::update($this->_table)
-				->set($values);
-
-			if (is_array($this->_primary_key))
+			if ($values)
 			{
-				foreach($this->_primary_key as $field)
+				$query = DB::update($this->_table)
+					->set($values);
+
+				if (is_array($this->_primary_key))
 				{
-					$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
+					foreach($this->_primary_key as $field)
+					{
+						$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
+					}
+				}
+				else
+				{
+					$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
+				}
+
+				if ($query->execute($this->_db))
+				{
+					// Load the original data for this record
+					$this->_original = $this->as_array();
 				}
 			}
-			else
-			{
-				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
-			}
 
-			if ($query->execute($this->_db))
+			if ($relations)
 			{
-				// Load the original data for this record
-				$this->_original = $this->as_array();
+				foreach ($relations as $name => $value)
+				{
+					$field = $this->_fields[$name];
+
+					$model = Sprig::factory($field->model);
+
+					// Find old relationships that must be deleted
+					if ($old = array_diff($this->_original[$name], $value))
+					{
+						$query = DB::delete($field->through)
+							->where($this->fk(), '=', $this->{$this->_primary_key})
+							->where($model->fk(), 'IN', $old);
+
+						$query->execute($this->_db);
+					}
+
+					// Find new relationships that must be inserted
+					if ($new = array_diff($value, $this->_original[$name]))
+					{
+						$query = DB::insert($field->through, array($this->fk(), $model->fk()));
+
+						foreach ($new as $id)
+						{
+							$query->values(array($this->{$this->_primary_key}, $id));
+						}
+
+						$query->execute($this->_db);
+					}
+
+					// Update the original values
+					$this->_original[$name] = $value;
+				}
 			}
 		}
 

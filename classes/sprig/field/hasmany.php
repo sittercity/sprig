@@ -11,6 +11,24 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public $default = array();
 
+	public function load()
+	{
+		$model = Sprig::factory($this->model);
+
+		if ($this->value)
+		{
+			// Select all of the related models
+			$query = DB::select()->where($model->pk(), 'IN', $this->value);
+		}
+		else
+		{
+			// Select nothing
+			$query = DB::select()->limit(0);
+		}
+
+		return $model->load($query, FALSE);
+	}
+
 	public function set($value)
 	{
 		if (empty($value) AND $this->empty)
@@ -23,41 +41,26 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public function verbose()
 	{
-		$value = $this->raw();
-
-		if (is_object($value))
-		{
-			$pk = Sprig::factory($this->model)->pk();
-			$value = $value->as_array($pk, $pk);
-		}
-
-		return is_array($value) ? implode(', ', $value) : '';
+		return implode(', ', $this->value);
 	}
 
 	public function input($name, array $attr = NULL)
 	{
-		// Load the model
 		$model = Sprig::factory($this->model);
 
-		if (is_object($this->value))
-		{
-			$selected = $this->value->as_array($model->pk(), $model->tk());
-		}
-		else
-		{
-			$selected = array();
-		}
-
-		$options = $model->select_list();
+		// All available options
+		$options = $model->select_list($model->pk());
 
 		$inputs = array();
-
-		foreach ($options as $value => $label)
+		foreach ($options as $id => $label)
 		{
-			$inputs[] = Form::checkbox("{$name}[]", $value, in_array($value, $selected)).' '.$label;
+			$inputs[] = '<label>'.Form::checkbox("{$name}[]", $id, isset($this->value[$id])).' '.$label.'</label>';
 		}
 
-		return $inputs;
+		// Hidden input is added to force $_POST to contain a value for
+		// this field, even when nothing is selected.
+
+		return Form::hidden($name, '').implode('<br/>', $inputs);
 	}
 
 } // End Sprig_Field_ManyToMany
