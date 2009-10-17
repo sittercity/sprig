@@ -13,6 +13,8 @@ abstract class Sprig_Model_User extends Sprig {
 
 	protected $_title_key = 'username';
 
+	protected $_sorting = array('username' => 'asc');
+
 	protected function _init()
 	{
 		$this->_fields += array(
