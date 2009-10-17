@@ -589,9 +589,27 @@ abstract class Sprig {
 	 *
 	 * @return  array  field => value
 	 */
-	public function changed()
+	public function changed($field = NULL)
 	{
-		return array_diff_assoc($this->as_array(), $this->_original);
+		if ($field === NULL)
+		{
+			$changed = $this->as_array();
+
+			foreach ($changed as $field => $value)
+			{
+				if ($value === $this->_original[$field])
+				{
+					// Original and current value are the same
+					unset($changed[$field]);
+				}
+			}
+
+			return $changed;
+		}
+		else
+		{
+			return $this->_fields[$field]->raw() !== $this->_original[$field];
+		}
 	}
 
 	/**
