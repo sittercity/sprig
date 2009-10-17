@@ -856,9 +856,34 @@ abstract class Sprig {
 		return $this;
 	}
 
+	/**
+	 * Delete the current record:
+	 *
+	 * - If the record is loaded, it will be deleted using primary key(s).
+	 * - If the record is not loaded, it will be deleted using all changed fields.
+	 * - If no data has been changed, the delete will be ignored.
+	 *
+	 * @return  $this
+	 */
 	public function delete()
 	{
-		if ($changed = $this->changed())
+		if ($this->loaded())
+		{
+			$query = DB::delete($this->_table);
+
+			if (is_array($this->_primary_key))
+			{
+				foreach($this->_primary_key as $field)
+				{
+					$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
+				}
+			}
+			else
+			{
+				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
+			}
+		}
+		elseif ($changed = $this->changed())
 		{
 			$query = DB::delete($this->_table);
 
@@ -866,11 +891,11 @@ abstract class Sprig {
 			{
 				$query->where($this->_fields[$field]->column, '=', $value);
 			}
+		}
 
-			if ($query->execute($this->_db))
-			{
-				return clone $this;
-			}
+		if (isset($query) AND $query->execute($this->_db))
+		{
+			return clone $this;
 		}
 
 		return $this;
