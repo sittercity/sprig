@@ -183,6 +183,14 @@ abstract class Sprig {
 				$value = $model->values(array($model->pk() => $value))->load();
 			}
 		}
+		elseif ($field instanceof Sprig_Field_Password)
+		{
+			if ($value)
+			{
+				// Hash the value immediately for security
+				$value = call_user_func($field->hash_with, $value);
+			}
+		}
 
 		// Set the new field value
 		$field->set($value);
