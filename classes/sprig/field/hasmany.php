@@ -9,13 +9,13 @@
  */
 class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
-	public $default = NULL;
+	public $default = array();
 
 	public function set($value)
 	{
 		if (empty($value) AND $this->empty)
 		{
-			$value = NULL;
+			$value = array();
 		}
 
 		$this->value = $value;

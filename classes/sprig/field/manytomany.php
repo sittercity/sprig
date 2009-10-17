@@ -9,8 +9,6 @@
  */
 class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 
-	public $default = array();
-
 	public $empty = TRUE;
 
 	public $through;
