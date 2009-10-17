@@ -793,6 +793,9 @@ abstract class Sprig {
 		// Load the original data for this record
 		$this->_original = $this->as_array();
 
+		// Object is now loaded
+		$this->_loaded = TRUE;
+
 		return $this;
 	}
 
