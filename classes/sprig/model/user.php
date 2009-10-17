@@ -1,18 +1,17 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-
+/**
+ * Basic user model. To use it, create a model that extends this class:
+ *
+ *     class Model_User extends Sprig_Model_User {}
+ *
+ * @package    Sprig
+ * @author     Woody Gilk
+ * @copyright  (c) 2009 Woody Gilk
+ * @license    MIT
+ */
 abstract class Sprig_Model_User extends Sprig {
 
-	protected $_table = 'users';
-
-	public function __set($field, $value)
-	{
-		if ($field === 'password' AND $value)
-		{
-			$value = sha1($value);
-		}
-
-		return parent::__set($field, $value);
-	}
+	protected $_title_key = 'username';
 
 	protected function _init()
 	{
@@ -25,10 +24,60 @@ abstract class Sprig_Model_User extends Sprig {
 					'regex' => array('/^[\pL_.-]+$/ui')
 				),
 			)),
-			'password' => new Sprig_Field_Char(array(
+			'password' => new Sprig_Field_Password(array(
 				'empty' => FALSE,
 			)),
+			'password_confirm' => new Sprig_Field_Password(array(
+				'empty' => TRUE,
+				'in_db' => FALSE,
+				'rules' => array(
+					'matches' => array('password'),
+				),
+			)),
 		);
+	}
+
+	/**
+	 * Login with a Validate callback:
+	 *
+	 *     // Create an empty user
+	 *     $user = Sprig::factory('user');
+	 *
+	 *     // Create a Validate instance
+	 *     $post = Validate::factory($_POST)
+	 *         ->rules('username', $user->field('username')->rules)
+	 *         ->rules('password', $user->field('password')->rules)
+	 *         ->callback('usernane', array($user, '_login'));
+	 *
+	 *     // Check the POST and login
+	 *     if ($post->check())
+	 *     {
+	 *         URL::redirect($uri);
+	 *     }
+	 *
+	 * @param   object  Validate instance
+	 * @param   string  field name
+	 * @return  void
+	 */
+	public function _login(Validate $array, $field)
+	{
+		if ($array['username'] AND $array['password'])
+		{
+			$this->username = $array['username'];
+			$this->password = $array['password'];
+
+			// Attempt to load the user by username and password
+			$this->load();
+
+			if ($this->loaded())
+			{
+				Cookie::set('authorized', $this->username);
+			}
+			else
+			{
+				$array->error('username', 'invalid');
+			}
+		}
 	}
 
 } // End User
