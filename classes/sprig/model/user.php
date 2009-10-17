@@ -34,6 +34,10 @@ abstract class Sprig_Model_User extends Sprig {
 					'matches' => array('password'),
 				),
 			)),
+			'last_login' => new Sprig_Field_Timestamp(array(
+				'empty' => TRUE,
+				'editable' => FALSE,
+			)),
 		);
 	}
 
@@ -71,6 +75,10 @@ abstract class Sprig_Model_User extends Sprig {
 
 			if ($this->loaded())
 			{
+				// Update the last login time
+				$this->last_login = time();
+				$this->update();
+
 				Cookie::set('authorized', $this->username);
 			}
 			else
