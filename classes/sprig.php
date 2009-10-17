@@ -751,11 +751,8 @@ abstract class Sprig {
 			}
 		}
 
-		// Load object data
-		$data = $this->as_array();
-
-		// Check the data
-		$data = $this->check($data);
+		// Check the all current data
+		$data = $this->check($this->as_array());
 
 		$values = array();
 		foreach ($data as $field => $value)
