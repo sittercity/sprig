@@ -35,7 +35,7 @@ class Sprig_Field_Timestamp extends Sprig_Field_Integer {
 		}
 		else
 		{
-			return $this->value;
+			return '';
 		}
 	}
 
