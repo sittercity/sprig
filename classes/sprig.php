@@ -452,6 +452,16 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Returns the database instance used for this model.
+	 *
+	 * @return  string
+	 */
+	public function db()
+	{
+		return $this->_db;
+	}
+
+	/**
 	 * Returns the table name of the model.
 	 *
 	 * @return  string
