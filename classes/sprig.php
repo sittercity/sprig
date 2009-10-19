@@ -1088,14 +1088,13 @@ abstract class Sprig {
 	{
 		if ($array[$field])
 		{
-			// Attempt to load a record
-			$model = clone $this;
-			$model->$field = $array[$field];
-			$model->load();
+			$query = DB::select($this->_fields[$this->_primary_key]->column)
+				->from($this->_table)
+				->where($this->_fields[$field]->column, '=', $array[$field])
+				->execute($this->_db);
 
-			if ( ! $model->changed())
+			if (count($query))
 			{
-				// Value is not unique
 				$array->error($field, 'unique');
 			}
 		}
