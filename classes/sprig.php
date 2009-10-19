@@ -151,9 +151,27 @@ abstract class Sprig {
 
 		$field = $this->_fields[$name];
 
+		if ( ! $this->loaded() AND ! $this->changed($name))
+		{
+			// Lazy loading, this field does not have a value yet
+			$this->load();
+		}
+
 		if ($field instanceof Sprig_Field_HasMany)
 		{
-			return $field->load();
+			$model = Sprig::factory($field->model);
+
+			if ($ids = $field->get())
+			{
+				$query = DB::select()
+					->where($model->pk(), 'IN', $ids);
+
+				return $model->load($query, FALSE);
+			}
+			else
+			{
+				return new Database_Result_Cached(array(), '', get_class($model));
+			}
 		}
 
 		return $field->get();
@@ -221,21 +239,6 @@ abstract class Sprig {
 
 		// Set the new field value
 		$field->set($value);
-
-		if ($field->primary)
-		{
-			foreach ($this->_fields as $n => $f)
-			{
-				if ($f instanceof Sprig_Field_HasMany)
-				{
-					// When the primary key changes, load new relationships
-					$f->set($r = $this->related($n));
-
-					// Set the original value for this relationship
-					$this->_original[$n] = $r;
-				}
-			}
-		}
 	}
 
 	/**
@@ -789,6 +792,15 @@ abstract class Sprig {
 				// Object data has been loaded
 				$this->_loaded = TRUE;
 
+				foreach ($this->_fields as $name => $field)
+				{
+					if ($field instanceof Sprig_Field_HasMany)
+					{
+						// Load all relations
+						$this->related($name);
+					}
+				}
+
 				// Load the original data for this record
 				$this->_original = $this->as_array();
 			}
@@ -832,7 +844,7 @@ abstract class Sprig {
 		// Check the all current data
 		$data = $this->check($this->as_array());
 
-		$values = array();
+		$values = $relations = array();
 		foreach ($data as $field => $value)
 		{
 			$field = $this->_fields[$field];
@@ -843,8 +855,15 @@ abstract class Sprig {
 				continue;
 			}
 
-			// Change the field name to the column name
-			$values[$field->column] = $value;
+			if ($field instanceof Sprig_Field_HasMany)
+			{
+				$relations[$name] = $value;
+			}
+			else
+			{
+				// Change the field name to the column name
+				$values[$field->column] = $value;
+			}
 		}
 
 		list($id) = DB::insert($this->_table, array_keys($values))
@@ -870,6 +889,23 @@ abstract class Sprig {
 			if ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
 			{
 				$this->_fields[$this->_primary_key]->set($id);
+			}
+		}
+
+		if ($relations)
+		{
+			foreach ($relations as $name => $value)
+			{
+				$field = $this->_fields[$name];
+
+				$model = Sprig::factory($field->model);
+
+				foreach ($value as $id)
+				{
+					DB::insert($field->through, array($this->fk(), $model->fk()))
+						->values(array($this->{$this->_primary_key}, $id))
+						->execute($this->_db);
+				}
 			}
 		}
 
@@ -909,20 +945,20 @@ abstract class Sprig {
 			{
 				$field = $this->_fields[$name];
 
-				if ($field->in_db)
+				if ( ! $field->in_db)
 				{
-					if ($field instanceof Sprig_Field_HasMany)
-					{
-						if ($field instanceof Sprig_Field_ManyToMany)
-						{
-							$relations[$name] = (array) $value;
-						}
-					}
-					else
-					{
-						// Change the field name to the column name
-						$values[$field->column] = $value;
-					}
+					// Skip all fields that are not in the database
+					continue;
+				}
+
+				if ($field instanceof Sprig_Field_HasMany)
+				{
+					$relations[$name] = $value;
+				}
+				else
+				{
+					// Change the field name to the column name
+					$values[$field->column] = $value;
 				}
 			}
 
@@ -943,11 +979,7 @@ abstract class Sprig {
 					$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
 				}
 
-				if ($query->execute($this->_db))
-				{
-					// Load the original data for this record
-					$this->_original = $this->as_array();
-				}
+				$query->execute($this->_db);
 			}
 
 			if ($relations)
@@ -961,30 +993,27 @@ abstract class Sprig {
 					// Find old relationships that must be deleted
 					if ($old = array_diff($this->_original[$name], $value))
 					{
-						$query = DB::delete($field->through)
+						DB::delete($field->through)
 							->where($this->fk(), '=', $this->{$this->_primary_key})
-							->where($model->fk(), 'IN', $old);
-
-						$query->execute($this->_db);
+							->where($model->fk(), 'IN', $old)
+							->execute($this->_db);
 					}
 
 					// Find new relationships that must be inserted
 					if ($new = array_diff($value, $this->_original[$name]))
 					{
-						$query = DB::insert($field->through, array($this->fk(), $model->fk()));
-
 						foreach ($new as $id)
 						{
-							$query->values(array($this->{$this->_primary_key}, $id));
+							DB::insert($field->through, array($this->fk(), $model->fk()))
+								->values(array($this->{$this->_primary_key}, $id))
+								->execute($this->_db);
 						}
-
-						$query->execute($this->_db);
 					}
-
-					// Update the original values
-					$this->_original[$name] = $value;
 				}
 			}
+
+			// Reset the original data for this record
+			$this->_original = $this->as_array();
 		}
 
 		return $this;
