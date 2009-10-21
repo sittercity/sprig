@@ -17,29 +17,33 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public function value($value)
 	{
-		if (is_object($value))
+		if (empty($value) AND $this->empty)
+		{
+			return array();
+		}
+		elseif (is_object($value))
 		{
 			$model = Sprig::factory($this->model);
 
 			// Assume this is a Database_Result object
-			$value = $value->as_array($model->pk(), $model->pk());
-		}
-		elseif (empty($value) AND $this->empty)
-		{
-			$value = array();
+			$value = $value->as_array(NULL, $model->pk());
 		}
 		else
 		{
 			// Value must always be an array
 			$value = (array) $value;
-
-			// Combine the values to make a mirrored array
-			$value = array_combine($value, $value);
 		}
 
-		foreach ($value as $id)
+		if ($value)
 		{
-			$value[$id] = parent::value($id);
+			// Combine the value to make a mirrored array
+			$value = array_combine($value, $value);
+
+			foreach ($value as $id)
+			{
+				// Convert the value to the proper type
+				$value[$id] = parent::value($id);
+			}
 		}
 
 		return $value;
@@ -47,7 +51,7 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public function verbose($value)
 	{
-		return implode(', ', $value);
+		return implode(', ', $this->value($value));
 	}
 
 	public function input($name, $value, array $attr = NULL)
@@ -56,6 +60,9 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 		// All available options
 		$options = $model->select_list($model->pk());
+
+		// Convert the selected options
+		$value = $this->value($value);
 
 		$inputs = array();
 		foreach ($options as $id => $label)

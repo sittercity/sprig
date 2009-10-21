@@ -153,6 +153,18 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
+			if ($field instanceof Sprig_Field_ForeignKey AND ! $field->model)
+			{
+				if ($field instanceof Sprig_Field_HasMany)
+				{
+					$field->model = Inflector::singular($name);
+				}
+				else
+				{
+					$field->model = $name;
+				}
+			}
+
 			if ($field instanceof Sprig_Field_ManyToMany)
 			{
 				if ( ! $field->through)
@@ -181,12 +193,10 @@ abstract class Sprig {
 						Sprig::$_relations[$pair] = implode('_', $tables);
 					}
 
-					// Assign by reference so that changes to the relationship
+					// Assign by reference so that changes to the pivot table
 					// will carry over to all models
 					$field->through =& Sprig::$_relations[$pair];
 				}
-
-				$this->_original[$name] = array();
 			}
 
 			if ( ! $field->column)
@@ -337,8 +347,15 @@ abstract class Sprig {
 					{
 						if (isset($value))
 						{
-							$query = DB::select()
-								->where($model->pk(), 'IN', $value);
+							if (empty($value))
+							{
+								return new Database_Result_Cached(array(), '');
+							}
+							else
+							{
+								$query = DB::select()
+									->where($model->pk(), 'IN', $value);
+							}
 						}
 						else
 						{
@@ -415,7 +432,7 @@ abstract class Sprig {
 		// Get the field object
 		$field = $this->_fields[$name];
 
-		if ($field instanceof Sprig_Field_ForeignKey
+		if (isset($field->model)
 			AND ! ($field instanceof Sprig_Field_BelongsTo OR $field instanceof Sprig_Field_ManyToMany))
 		{
 			throw new Sprig_Exception('Cannot change relationship of :model->:field using __set()',
@@ -429,16 +446,36 @@ abstract class Sprig {
 		{
 			$this->_original[$name] = $value;
 		}
-		elseif ($value !== $this->_original[$name])
+		else
 		{
-			if (isset($this->_related[$name]))
+			if ($field instanceof Sprig_Field_ManyToMany)
 			{
-				// Clear stale related objects
-				unset($this->_related[$name]);
+				if ( ! isset($this->_original[$name]))
+				{
+					$model = Sprig::factory($field->model);
+
+					$result = DB::select($model->fk())
+						->from($field->through)
+						->where($this->fk(), '=', $this->{$this->_primary_key})
+						->execute($this->_db);
+
+					// The original value for the relationship must be defined
+					// before we can tell if the value has been changed
+					$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
+				}
 			}
 
-			// Set a changed value
-			$this->_changed[$name] = $value;
+			if ($value !== $this->_original[$name])
+			{
+				if (isset($this->_related[$name]))
+				{
+					// Clear stale related objects
+					unset($this->_related[$name]);
+				}
+
+				// Set a changed value
+				$this->_changed[$name] = $value;
+			}
 		}
 	}
 
@@ -481,7 +518,7 @@ abstract class Sprig {
 	 * @param   string  table name, TRUE for the model table
 	 * @return  string
 	 */
-	public function pk($table = FALSE)
+	public function pk($table = NULL)
 	{
 		if ($table)
 		{
@@ -502,7 +539,7 @@ abstract class Sprig {
 	 * @param   string  table name, TRUE for the model table
 	 * @return  string
 	 */
-	public function fk($table = FALSE)
+	public function fk($table = NULL)
 	{
 		$key = $this->_model.'_'.$this->_primary_key;
 
@@ -525,7 +562,7 @@ abstract class Sprig {
 	 * @param   string  table name, TRUE for the model table
 	 * @return  string
 	 */
-	public function tk($table = FALSE)
+	public function tk($table = NULL)
 	{
 		if ($table)
 		{
@@ -574,7 +611,6 @@ abstract class Sprig {
 
 		foreach ($values as $field => $value)
 		{
-			// Set the field using __set()
 			$this->$field = $value;
 		}
 
@@ -663,7 +699,7 @@ abstract class Sprig {
 
 			foreach ($changed as $field => $value)
 			{
-				if ($value === $this->_original[$field])
+				if ( ! array_key_exists($field, $this->_changed))
 				{
 					unset($changed[$field]);
 				}
@@ -732,7 +768,7 @@ abstract class Sprig {
 					$key = $name;
 				}
 
-				$inputs[$key] = $field->input($name, $field->$name);
+				$inputs[$key] = $field->input($name, $this->$name);
 			}
 		}
 
@@ -889,19 +925,17 @@ abstract class Sprig {
 
 			if ($field instanceof Sprig_Field_Auto OR ! $field->in_db )
 			{
+				if ($field instanceof Sprig_Field_HasMany)
+				{
+					$relations[$name] = $value;
+				}
+
 				// Skip all auto-increment fields or where in_db is false
 				continue;
 			}
 
-			if ($field instanceof Sprig_Field_HasMany)
-			{
-				$relations[$name] = $value;
-			}
-			else
-			{
-				// Change the field name to the column name
-				$values[$field->column] = $value;
-			}
+			// Change the field name to the column name
+			$values[$field->column] = $value;
 		}
 
 		list($id) = DB::insert($this->_table, array_keys($values))
@@ -910,25 +944,31 @@ abstract class Sprig {
 
 		if (is_array($this->_primary_key))
 		{
-			foreach ($this->_primary_key as $field)
+			foreach ($this->_primary_key as $name)
 			{
-				if ($this->_fields[$field] instanceof Sprig_Field_Auto)
+				if ($this->_fields[$name] instanceof Sprig_Field_Auto)
 				{
 					// Set the auto-increment primary key to the insert id
-					$this->_fields[$field]->set($id);
+					$this->_original[$name] = $this->_fields[$name]->value($id);
 
 					// There can only be 1 auto-increment column per model
 					break;
 				}
 			}
 		}
-		else
+		elseif ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
 		{
-			if ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
-			{
-				$this->_fields[$this->_primary_key]->set($id);
-			}
+			$this->_original[$this->_primary_key] = $this->_fields[$this->_primary_key]->value($id);
 		}
+
+		// Load the original data for this record
+		$this->_original = $this->as_array();
+
+		// All changed data is in sync
+		$this->_changed = array();
+
+		// Object is now loaded
+		$this->_loaded = TRUE;
 
 		if ($relations)
 		{
@@ -946,12 +986,6 @@ abstract class Sprig {
 				}
 			}
 		}
-
-		// Load the original data for this record
-		$this->_original = $this->as_array();
-
-		// Object is now loaded
-		$this->_loaded = TRUE;
 
 		return $this;
 	}
@@ -978,13 +1012,19 @@ abstract class Sprig {
 			// Check the updated data
 			$data = $this->check($this->changed());
 
-			$values = array();
+			$values = $relations = array();
 			foreach ($data as $name => $value)
 			{
 				$field = $this->_fields[$name];
 
 				if ( ! $field->in_db)
 				{
+					if ($field instanceof Sprig_Field_ManyToMany)
+					{
+						// Relationships have been changed
+						$relations[$name] = $value;
+					}
+
 					// Skip all fields that are not in the database
 					continue;
 				}
@@ -1013,35 +1053,35 @@ abstract class Sprig {
 				$query->execute($this->_db);
 			}
 
-			// if ($relations)
-			// {
-			// 	foreach ($relations as $name => $value)
-			// 	{
-			// 		$field = $this->_fields[$name];
-			//
-			// 		$model = Sprig::factory($field->model);
-			//
-			// 		// Find old relationships that must be deleted
-			// 		if ($old = array_diff($this->_original[$name], $value))
-			// 		{
-			// 			DB::delete($field->through)
-			// 				->where($this->fk(), '=', $this->{$this->_primary_key})
-			// 				->where($model->fk(), 'IN', $old)
-			// 				->execute($this->_db);
-			// 		}
-			//
-			// 		// Find new relationships that must be inserted
-			// 		if ($new = array_diff($value, $this->_original[$name]))
-			// 		{
-			// 			foreach ($new as $id)
-			// 			{
-			// 				DB::insert($field->through, array($this->fk(), $model->fk()))
-			// 					->values(array($this->{$this->_primary_key}, $id))
-			// 					->execute($this->_db);
-			// 			}
-			// 		}
-			// 	}
-			// }
+			if ($relations)
+			{
+				foreach ($relations as $name => $value)
+				{
+					$field = $this->_fields[$name];
+
+					$model = Sprig::factory($field->model);
+
+					// Find old relationships that must be deleted
+					if ($old = array_diff($this->_original[$name], $value))
+					{
+						DB::delete($field->through)
+							->where($this->fk(), '=', $this->{$this->_primary_key})
+							->where($model->fk(), 'IN', $old)
+							->execute($this->_db);
+					}
+
+					// Find new relationships that must be inserted
+					if ($new = array_diff($value, $this->_original[$name]))
+					{
+						foreach ($new as $id)
+						{
+							DB::insert($field->through, array($this->fk(), $model->fk()))
+								->values(array($this->{$this->_primary_key}, $id))
+								->execute($this->_db);
+						}
+					}
+				}
+			}
 
 			// Reset the original data for this record
 			$this->_original = $this->as_array();
