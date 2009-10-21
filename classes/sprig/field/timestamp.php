@@ -17,21 +17,21 @@ class Sprig_Field_Timestamp extends Sprig_Field_Integer {
 
 	public $format = 'Y-m-d G:i:s A';
 
-	public function set($value)
+	public function value($value)
 	{
 		if (is_string($value) AND ! ctype_digit($value))
 		{
 			$value = strtotime($value);
 		}
 
-		return parent::set($value);
+		return parent::value($value);
 	}
 
-	public function verbose()
+	public function verbose($value)
 	{
-		if ($this->value)
+		if ($value)
 		{
-			return date($this->format, $this->value);
+			return date($this->format, $value);
 		}
 		else
 		{

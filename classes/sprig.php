@@ -85,174 +85,33 @@ abstract class Sprig {
 	// Original object data
 	protected $_original = array();
 
-	/**
-	 * Calls the init() method. Sprig constructors are only called once!
-	 *
-	 * @param   string   model name
-	 * @return  void
-	 */
-	final protected function __construct()
-	{
-		$this->init();
-	}
+	// Changed object data
+	protected $_changed = array();
 
-	/**
-	 * Returns the model name.
-	 *
-	 * @return  string
-	 */
-	final public function __toString()
-	{
-		return $this->_model;
-	}
-
-	/**
-	 * Clones each of the fields and empty the model.
-	 *
-	 * @return  void
-	 */
-	public function __clone()
-	{
-		// Object is being unloaded
-		$this->_loaded = FALSE;
-
-		foreach ($this->_fields as $name => $field)
-		{
-			$this->_fields[$name] = clone $field;
-		}
-
-		// Reset original data
-		$this->_original = $this->as_array();
-	}
-
-	/**
-	 * Get the value of a field.
-	 *
-	 * @throws  Sprig_Exception  field does not exist
-	 * @param   string  field name
-	 * @return  mixed
-	 */
-	public function __get($name)
-	{
-		if ( ! $this->_init)
-		{
-			$this->init();
-
-			// Loaded status must be changed, this object is being created by
-			// mysql_fetch_object() or similar
-			$this->_loaded = TRUE;
-		}
-
-		if ( ! isset($this->_fields[$name]))
-		{
-			throw new Sprig_Exception(':name model does not have a field :field',
-				array(':name' => get_class($this), ':field' => $name));
-		}
-
-		$field = $this->_fields[$name];
-
-		if ( ! $this->loaded() AND ! $this->changed($name))
-		{
-			// Lazy loading, this field does not have a value yet
-			$this->load();
-		}
-
-		if ($field instanceof Sprig_Field_HasMany)
-		{
-			$model = Sprig::factory($field->model);
-
-			if ($ids = $field->get())
-			{
-				$query = DB::select()
-					->where($model->pk(), 'IN', $ids);
-
-				return $model->load($query, FALSE);
-			}
-			else
-			{
-				return new Database_Result_Cached(array(), '', get_class($model));
-			}
-		}
-
-		return $field->get();
-	}
-
-	/**
-	 * Set the value of a field.
-	 *
-	 * @throws  Sprig_Exception  field does not exist
-	 * @param   string  field name
-	 * @param   mixed   new field value
-	 * @return  mixed
-	 */
-	public function __set($name, $value)
-	{
-		if ( ! $this->_init)
-		{
-			$this->init();
-
-			// Loaded status must be changed, this object is being created by
-			// mysql_fetch_object() or similar
-			$this->_loaded = TRUE;
-		}
-
-		if ( ! isset($this->_fields[$name]))
-		{
-			throw new Sprig_Exception(':name model does not have a field :field',
-				array(':name' => get_class($this), ':field' => $name));
-		}
-
-		// Get the field object
-		$field = $this->_fields[$name];
-
-		if ($field instanceof Sprig_Field_HasOne)
-		{
-			if ( ! is_object($value))
-			{
-				// Load the a new model for this field
-				$model = Sprig::factory($field->model);
-
-				// Load the new object by pk
-				$value = $model->values(array($model->pk() => $value))->load();
-			}
-		}
-		elseif ($field instanceof Sprig_Field_Password)
-		{
-			if ($value)
-			{
-				// Hash the value immediately for security
-				$value = call_user_func($field->hash_with, $value);
-			}
-		}
-		elseif ($field instanceof Sprig_Field_HasMany)
-		{
-			if (is_object($value))
-			{
-				$model = Sprig::factory($field->model);
-				$value = $value->as_array($model->pk(), $model->pk());
-			}
-			elseif (is_array($value))
-			{
-				$value = array_combine($value, $value);
-			}
-		}
-
-		// Set the new field value
-		$field->set($value);
-	}
+	// Related object data
+	protected $_related = array();
 
 	/**
 	 * Initialize the fields and add validation rules based on field properties.
 	 *
 	 * @return  void
 	 */
-	public function init()
+	final protected function __construct()
 	{
 		if ($this->_init)
 		{
+			if ($this->_loaded === 1)
+			{
+				// Object loading via mysql_fetch_object or similar has finished
+				$this->_loaded = TRUE;
+			}
+
 			// Can only be called once
 			return;
 		}
+
+		// Initialization has been started
+		$this->_init = TRUE;
 
 		// Set up the fields
 		$this->_init();
@@ -294,27 +153,6 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ( ! $field->column)
-			{
-				// Create the key based on the field name
-
-				if ($field instanceof Sprig_Field_ForeignKey)
-				{
-					if ($field instanceof Sprig_Field_HasOne)
-					{
-						$field->column = $name.'_id';
-					}
-					else
-					{
-						$field->column = $this->_model;
-					}
-				}
-				else
-				{
-					$field->column = $name;
-				}
-			}
-
 			if ($field instanceof Sprig_Field_ManyToMany)
 			{
 				if ( ! $field->through)
@@ -346,6 +184,30 @@ abstract class Sprig {
 					// Assign by reference so that changes to the relationship
 					// will carry over to all models
 					$field->through =& Sprig::$_relations[$pair];
+				}
+
+				$this->_original[$name] = array();
+			}
+
+			if ( ! $field->column)
+			{
+				// Create the key based on the field name
+
+				if ($field instanceof Sprig_Field_BelongsTo)
+				{
+					$field->column = Sprig::factory($field->model)->fk();
+				}
+				elseif ($field instanceof Sprig_Field_HasOne)
+				{
+					$field->column = $this->fk();
+				}
+				elseif ($field instanceof Sprig_Field_ForeignKey)
+				{
+					// This field is probably a Many and does not need a column
+				}
+				else
+				{
+					$field->column = $name;
 				}
 			}
 
@@ -384,9 +246,233 @@ abstract class Sprig {
 					$field->rules['max_length'] = array($field->max_length);
 				}
 			}
+
+			if ($field->in_db)
+			{
+				// Set the default value for any field that is stored in the database
+				$this->_original[$name] = $field->value($field->default);
+			}
+		}
+	}
+
+	/**
+	 * Returns the model name.
+	 *
+	 * @return  string
+	 */
+	final public function __toString()
+	{
+		return $this->_model;
+	}
+
+	/**
+	 * Clone fields when cloning the model.
+	 *
+	 * @return  void
+	 */
+	public function __clone()
+	{
+		// foreach ($this->_fields as $name => $field)
+		// {
+		// 	$this->_fields[$name] = clone $field;
+		// }
+	}
+
+	/**
+	 * Get the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @return  mixed
+	 */
+	public function __get($name)
+	{
+		if ( ! $this->_init)
+		{
+			// The constructor must always be called first
+			$this->__construct();
+
+			// This object is about to be loaded by mysql_fetch_object() or similar
+			$this->_loaded = 1;
 		}
 
-		$this->_init = TRUE;
+		if ( ! isset($this->_fields[$name]))
+		{
+			throw new Sprig_Exception(':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
+
+		if (isset($this->_related[$name]))
+		{
+			// Shortcut to any related object
+			return $this->_related[$name];
+		}
+
+		$field = $this->_fields[$name];
+
+		if ($this->changed($name))
+		{
+			$value = $this->_changed[$name];
+		}
+		elseif ($field->in_db)
+		{
+			if ( ! $this->loaded())
+			{
+				// Lazy loading, this field does not have a value yet
+				$this->load();
+			}
+
+			$value = $this->_original[$name];
+		}
+
+		if ($field instanceof Sprig_Field_ForeignKey)
+		{
+			if ( ! isset($this->_related[$name]))
+			{
+				$model = Sprig::factory($field->model);
+
+				if ($field instanceof Sprig_Field_HasMany)
+				{
+					if ($field instanceof Sprig_Field_ManyToMany)
+					{
+						if (isset($value))
+						{
+							$query = DB::select()
+								->where($model->pk(), 'IN', $value);
+						}
+						else
+						{
+							$query = DB::select()
+								->join($field->through)
+									->on($model->fk($field->through), '=', $model->pk())
+								->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+						}
+					}
+					else
+					{
+						if (isset($value))
+						{
+							$query = DB::select()
+								->where($model->pk(), '=', $value);
+						}
+						else
+						{
+							$query = DB::select()
+								->where($this->fk(), '=', $this->{$this->_primary_key});
+						}
+					}
+
+					$related = $model->load($query, NULL);
+
+					if ( ! $this->changed($name))
+					{
+						// We can assume this is the original value because no
+						// changed value exists
+						$this->_original[$name] = $field->value($related);
+					}
+				}
+				elseif ($field instanceof Sprig_Field_BelongsTo)
+				{
+					$related = $model->values(array($model->pk() => $value));
+				}
+				elseif ($field instanceof Sprig_Field_HasOne)
+				{
+					$related = $model->values(array($this->_model => $this->{$this->_primary_key}));
+				}
+
+				$value = $this->_related[$name] = $related;
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Set the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @param   mixed   new field value
+	 * @return  void
+	 */
+	public function __set($name, $value)
+	{
+		if ( ! $this->_init)
+		{
+			// The constructor must always be called first
+			$this->__construct();
+
+			// This object is about to be loaded by mysql_fetch_object() or similar
+			$this->_loaded = 1;
+		}
+
+		if ( ! isset($this->_fields[$name]))
+		{
+			throw new Sprig_Exception(':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
+
+		// Get the field object
+		$field = $this->_fields[$name];
+
+		if ($field instanceof Sprig_Field_ForeignKey
+			AND ! ($field instanceof Sprig_Field_BelongsTo OR $field instanceof Sprig_Field_ManyToMany))
+		{
+			throw new Sprig_Exception('Cannot change relationship of :model->:field using __set()',
+				array(':model' => $this->_model, ':field' => $name));
+		}
+
+		// Convert the value to the correct type
+		$value = $field->value($value);
+
+		if ($this->_loaded === 1)
+		{
+			$this->_original[$name] = $value;
+		}
+		elseif ($value !== $this->_original[$name])
+		{
+			if (isset($this->_related[$name]))
+			{
+				// Clear stale related objects
+				unset($this->_related[$name]);
+			}
+
+			// Set a changed value
+			$this->_changed[$name] = $value;
+		}
+	}
+
+	/**
+	 * Unset the changed the value of a field.
+	 *
+	 * @throws  Sprig_Exception  field does not exist
+	 * @param   string  field name
+	 * @return  void
+	 */
+	public function __unset($name)
+	{
+		if ( ! $this->_init)
+		{
+			// The constructor must always be called first
+			$this->__construct();
+		}
+
+		if ( ! isset($this->_fields[$name]))
+		{
+			throw new Sprig_Exception(':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name));
+		}
+
+		$field = $this->_fields[$name];
+
+		if ($field->in_db)
+		{
+			// Set the original value back to the default
+			$this->_original[$name] = $field->value($field->default);
+		}
+
+		// Remove any changed value
+		unset($this->_changed[$name]);
 	}
 
 	/**
@@ -502,26 +588,15 @@ abstract class Sprig {
 	 */
 	public function as_array($verbose = FALSE)
 	{
-		$data = array();
-		foreach ($this->_fields as $name => $field)
-		{
-			if ($verbose === TRUE)
-			{
-				// Get the verbose value
-				$value = $field->verbose();
-			}
-			elseif ($field instanceof Sprig_Field_ForeignKey)
-			{
-				// Use the non-object value for all foreign keys
-				$value = $field->raw();
-			}
-			else
-			{
-				// Get the normal value
-				$value = $field->get();
-			}
+		$data = array_merge($this->_original, $this->_changed);
 
-			$data[$name] = $value;
+		if ($verbose)
+		{
+			foreach ($data as $field => $value)
+			{
+				// Convert each field to the verbose value
+				$data[$field] = $this->_fields[$field]->verbose($value);
+			}
 		}
 
 		return $data;
@@ -563,57 +638,13 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Return the related object of a ForeignKey field.
-	 *
-	 * @param   string   field name
-	 * @return  object   Sprig instance for HasOne fields, Database_Result iterator for HasMany
-	 */
-	public function related($name)
-	{
-		$field = $this->_fields[$name];
-
-		if ( ! $field instanceof Sprig_Field_HasMany)
-		{
-			throw new Sprig_Exception(':name model does not have a relation :field',
-				array(':name' => get_class($this), ':field' => $name));
-		}
-
-		if ( ! $field->get())
-		{
-			// Load the related model
-			$model = Sprig::factory($field->model);
-
-			if ($field instanceof Sprig_Field_ManyToMany)
-			{
-				$query = DB::select(array($model->fk(), $model->pk()))
-					->from($field->through);
-			}
-			else
-			{
-				$query = DB::select($model->pk())
-					->from($model->table());
-			}
-
-			$result = $query
-				->where($this->fk(), '=', $this->{$this->_primary_key})
-				->execute($this->_db)
-				->as_array($model->pk(), $model->pk());
-
-			// Change the field value to the result value
-			$field->set($result);
-		}
-
-		return $field->get();
-	}
-
-	/**
 	 * Object data loaded status.
 	 *
 	 * @return  boolean
 	 */
 	public function loaded()
 	{
-		return $this->_loaded;
+		return (bool) $this->_loaded;
 	}
 
 	/**
@@ -625,13 +656,15 @@ abstract class Sprig {
 	{
 		if ($field === NULL)
 		{
+			// Note that array_diff_assoc() can't be used here because it
+			// assumes that any two array values are the same... WTF!
+
 			$changed = $this->as_array();
 
 			foreach ($changed as $field => $value)
 			{
 				if ($value === $this->_original[$field])
 				{
-					// Original and current value are the same
 					unset($changed[$field]);
 				}
 			}
@@ -640,7 +673,7 @@ abstract class Sprig {
 		}
 		else
 		{
-			return $this->_fields[$field]->raw() !== $this->_original[$field];
+			return array_key_exists($field, $this->_changed);
 		}
 	}
 
@@ -699,7 +732,7 @@ abstract class Sprig {
 					$key = $name;
 				}
 
-				$inputs[$key] = $field->input($name);
+				$inputs[$key] = $field->input($name, $field->$name);
 			}
 		}
 
@@ -731,14 +764,16 @@ abstract class Sprig {
 	/**
 	 * Load a single record using the current data.
 	 *
+	 * @param   object   any Database_Query_Builder_Select, NULL for none
+	 * @param   integer  number of records to load, FALSE for all
 	 * @return  $this
 	 */
-	public function load(Database_Query $query = NULL, $limit = 1)
+	public function load(Database_Query_Builder_Select $query = NULL, $limit = 1)
 	{
 		// Load changed values as search parameters
 		$changed = $this->changed();
 
-		if ($query === NULL AND $limit === 1 AND empty($changed))
+		if ($query === NULL AND $limit === 1 AND ! $changed)
 		{
 			// No query needs to be executed
 			return $this;
@@ -753,7 +788,7 @@ abstract class Sprig {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			if ($field instanceof Sprig_Field_HasMany OR ! $field->in_db)
+			if ( ! $field->in_db)
 			{
 				// Multiple relations cannot be loaded this way
 				continue;
@@ -770,7 +805,7 @@ abstract class Sprig {
 
 			if (array_key_exists($name, $changed))
 			{
-				$query->where($field->column, '=', $field->raw());
+				$query->where($field->column, '=', $changed[$name]);
 			}
 		}
 
@@ -786,23 +821,26 @@ abstract class Sprig {
 
 			if (count($result))
 			{
-				// Load the result
-				$this->values($result->current(), TRUE);
-
-				// Object data has been loaded
+				// Set the loaded statust before setting values to prevent an
+				// infinate loop with lazy loading in __get()
 				$this->_loaded = TRUE;
 
-				foreach ($this->_fields as $name => $field)
+				// Get the values from the result
+				$values = $result->current();
+
+				// $this->values($values);
+
+				foreach ($values as $name => $value)
 				{
-					if ($field instanceof Sprig_Field_HasMany)
+					// Set the original value
+					$this->_original[$name] = $this->_fields[$name]->value($value);
+
+					if ($this->changed($name))
 					{
-						// Load all relations
-						$this->related($name);
+						// Remove stale changed values
+						unset($this->_changed[$name]);
 					}
 				}
-
-				// Load the original data for this record
-				$this->_original = $this->as_array();
 			}
 
 			return $this;
@@ -940,7 +978,7 @@ abstract class Sprig {
 			// Check the updated data
 			$data = $this->check($this->changed());
 
-			$values = $relations = array();
+			$values = array();
 			foreach ($data as $name => $value)
 			{
 				$field = $this->_fields[$name];
@@ -951,15 +989,8 @@ abstract class Sprig {
 					continue;
 				}
 
-				if ($field instanceof Sprig_Field_HasMany)
-				{
-					$relations[$name] = $value;
-				}
-				else
-				{
-					// Change the field name to the column name
-					$values[$field->column] = $value;
-				}
+				// Change the field name to the column name
+				$values[$field->column] = $value;
 			}
 
 			if ($values)
@@ -982,38 +1013,41 @@ abstract class Sprig {
 				$query->execute($this->_db);
 			}
 
-			if ($relations)
-			{
-				foreach ($relations as $name => $value)
-				{
-					$field = $this->_fields[$name];
-
-					$model = Sprig::factory($field->model);
-
-					// Find old relationships that must be deleted
-					if ($old = array_diff($this->_original[$name], $value))
-					{
-						DB::delete($field->through)
-							->where($this->fk(), '=', $this->{$this->_primary_key})
-							->where($model->fk(), 'IN', $old)
-							->execute($this->_db);
-					}
-
-					// Find new relationships that must be inserted
-					if ($new = array_diff($value, $this->_original[$name]))
-					{
-						foreach ($new as $id)
-						{
-							DB::insert($field->through, array($this->fk(), $model->fk()))
-								->values(array($this->{$this->_primary_key}, $id))
-								->execute($this->_db);
-						}
-					}
-				}
-			}
+			// if ($relations)
+			// {
+			// 	foreach ($relations as $name => $value)
+			// 	{
+			// 		$field = $this->_fields[$name];
+			//
+			// 		$model = Sprig::factory($field->model);
+			//
+			// 		// Find old relationships that must be deleted
+			// 		if ($old = array_diff($this->_original[$name], $value))
+			// 		{
+			// 			DB::delete($field->through)
+			// 				->where($this->fk(), '=', $this->{$this->_primary_key})
+			// 				->where($model->fk(), 'IN', $old)
+			// 				->execute($this->_db);
+			// 		}
+			//
+			// 		// Find new relationships that must be inserted
+			// 		if ($new = array_diff($value, $this->_original[$name]))
+			// 		{
+			// 			foreach ($new as $id)
+			// 			{
+			// 				DB::insert($field->through, array($this->fk(), $model->fk()))
+			// 					->values(array($this->{$this->_primary_key}, $id))
+			// 					->execute($this->_db);
+			// 			}
+			// 		}
+			// 	}
+			// }
 
 			// Reset the original data for this record
 			$this->_original = $this->as_array();
+
+			// Everything has been updated
+			$this->_changed = array();
 		}
 
 		return $this;
@@ -1058,7 +1092,17 @@ abstract class Sprig {
 
 		if (isset($query) AND $query->execute($this->_db))
 		{
-			return clone $this;
+			// Reset all object data
+			$this->_changed = $this->_original = array();
+
+			foreach ($this->_fields as $name => $field)
+			{
+				if ($field->in_db)
+				{
+					// Repopulate the default values for the model
+					$this->_original[$name] = $field->value($field->default);
+				}
+			}
 		}
 
 		return $this;

@@ -9,42 +9,48 @@
  */
 class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
+	public $empty = TRUE;
+
 	public $default = array();
 
-	public function load()
+	public $editable = FALSE;
+
+	public function value($value)
 	{
-		$model = Sprig::factory($this->model);
-
-		if ($this->value)
+		if (is_object($value))
 		{
-			// Select all of the related models
-			$query = DB::select()->where($model->pk(), 'IN', $this->value);
-		}
-		else
-		{
-			// Select nothing
-			$query = DB::select()->limit(0);
-		}
+			$model = Sprig::factory($this->model);
 
-		return $model->load($query, FALSE);
-	}
-
-	public function set($value)
-	{
-		if (empty($value) AND $this->empty)
+			// Assume this is a Database_Result object
+			$value = $value->as_array($model->pk(), $model->pk());
+		}
+		elseif (empty($value) AND $this->empty)
 		{
 			$value = array();
 		}
+		else
+		{
+			// Value must always be an array
+			$value = (array) $value;
 
-		$this->value = $value;
+			// Combine the values to make a mirrored array
+			$value = array_combine($value, $value);
+		}
+
+		foreach ($value as $id)
+		{
+			$value[$id] = parent::value($id);
+		}
+
+		return $value;
 	}
 
-	public function verbose()
+	public function verbose($value)
 	{
-		return implode(', ', $this->value);
+		return implode(', ', $value);
 	}
 
-	public function input($name, array $attr = NULL)
+	public function input($name, $value, array $attr = NULL)
 	{
 		$model = Sprig::factory($this->model);
 
@@ -54,7 +60,7 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 		$inputs = array();
 		foreach ($options as $id => $label)
 		{
-			$inputs[] = '<label>'.Form::checkbox("{$name}[]", $id, isset($this->value[$id])).' '.$label.'</label>';
+			$inputs[] = '<label>'.Form::checkbox("{$name}[]", $id, isset($value[$id])).' '.$label.'</label>';
 		}
 
 		// Hidden input is added to force $_POST to contain a value for

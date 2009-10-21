@@ -9,7 +9,7 @@
  */
 class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 
-	public $empty = TRUE;
+	public $editable = TRUE;
 
 	public $through;
 

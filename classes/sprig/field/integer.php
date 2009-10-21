@@ -15,9 +15,18 @@ class Sprig_Field_Integer extends Sprig_Field {
 
 	public $max_value;
 
-	public function set($value)
+	public function value($value)
 	{
-		return parent::set((int) $value);
+		if (empty($value) AND $this->empty)
+		{
+			$value = NULL;
+		}
+		else
+		{
+			$value = (int) $value;
+		}
+
+		return $value;
 	}
 
 } // End Sprig_Field_Integer

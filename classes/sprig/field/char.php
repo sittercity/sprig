@@ -13,9 +13,4 @@ class Sprig_Field_Char extends Sprig_Field {
 
 	public $max_length;
 
-	public function set($value)
-	{
-		return parent::set((string) $value);
-	}
-
 } // End Sprig_Field_Char

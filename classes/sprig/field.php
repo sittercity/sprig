@@ -37,50 +37,20 @@ abstract class Sprig_Field {
 
 	public $callbacks = array();
 
-	protected $value;
-
 	public function __construct(array $options = NULL)
 	{
 		if ( ! empty($options))
 		{
-			$props = get_object_vars($this);
-
-			unset($props['value']);
-
-			$options = array_intersect_key($options, $props);
+			$options = array_intersect_key($options, get_object_vars($this));
 
 			foreach ($options as $key => $value)
 			{
 				$this->$key = $value;
 			}
 		}
-
-		if ($this->default !== NULL)
-		{
-			$this->set($this->default);
-		}
 	}
 
-	public function __clone()
-	{
-		if ($this->default !== NULL)
-		{
-			// Set the default value
-			$this->set($this->default);
-		}
-		else
-		{
-			// Set an empty value
-			$this->set(NULL);
-		}
-	}
-
-	public function get()
-	{
-		return $this->value;
-	}
-
-	public function set($value)
+	public function value($value)
 	{
 		if ($this->null AND empty($value))
 		{
@@ -88,35 +58,26 @@ abstract class Sprig_Field {
 			$value = NULL;
 		}
 
-		if ($this->value === $value)
-		{
-			return FALSE;
-		}
-
-		$this->value = $value;
-
-		return TRUE;
+		return $value;
 	}
 
-	public function raw()
+	public function verbose($value)
 	{
-		return $this->value;
+		return (string) $value;
 	}
 
-	public function verbose()
+	public function input($name, $value, array $attr = NULL)
 	{
-		return (string) $this->raw();
-	}
+		// Make the value verbose
+		$value = $this->verbose($value);
 
-	public function input($name, array $attr = NULL)
-	{
 		if (is_array($this->choices))
 		{
-			return Form::select($name, $this->choices, $this->value, $attr);
+			return Form::select($name, $this->choices, $value, $attr);
 		}
 		else
 		{
-			return Form::input($name, $this->verbose(), $attr);
+			return Form::input($name, $value, $attr);
 		}
 	}
 
