@@ -22,16 +22,23 @@ class Sprig_Field_Float extends Sprig_Field {
 
 		return $value;
 	}
-	
-	public function verbose()
+
+	public function verbose($value)
 	{
-		if ($this->places)
+		if (is_float($value))
 		{
-			return number_format($this->value, $this->places);
+			if ($this->places)
+			{
+				return number_format($value, $this->places);
+			}
+			else
+			{
+				return (string) $value;
+			}
 		}
 		else
 		{
-			return (string) $this->value;
+			return '';
 		}
 	}
 
