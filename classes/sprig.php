@@ -484,6 +484,17 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Check if a value exists within the mode.
+	 *
+	 * @param   string   field name
+	 * @return  boolean
+	 */
+	public function __isset($name)
+	{
+		return isset($this->_fields[$name]);
+	}
+
+	/**
 	 * Unset the changed the value of a field.
 	 *
 	 * @throws  Sprig_Exception  field does not exist
