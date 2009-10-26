@@ -10,7 +10,7 @@ class Sprig_Field_BelongsTo extends Sprig_Field_ForeignKey {
 
 		$choices = $model->select_list($model->pk());
 
-		return Form::select($name, $choices, $this->verbose($value));
+		return Form::select($name, $choices, $this->verbose($value), $attr);
 	}
 
 } // End Sprig_Field_BelongsTo
