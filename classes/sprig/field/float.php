@@ -13,12 +13,14 @@ class Sprig_Field_Float extends Sprig_Field {
 
 	public function set($value)
 	{
-		if ( ! empty($value))
+		$value = parent::set($value);
+
+		if ($value !== NULL)
 		{
 			$value = (float) $value;
 		}
 
-		return parent::set($value);
+		return $value;
 	}
 	
 	public function verbose()

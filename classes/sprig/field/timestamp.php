@@ -19,7 +19,7 @@ class Sprig_Field_Timestamp extends Sprig_Field_Integer {
 
 	public function value($value)
 	{
-		if (is_string($value) AND ! ctype_digit($value))
+		if ($value AND is_string($value) AND ! ctype_digit($value))
 		{
 			$value = strtotime($value);
 		}

@@ -15,12 +15,14 @@ class Sprig_Field_Integer extends Sprig_Field {
 
 	public function value($value)
 	{
-		if ( ! empty($value))
+		$value = parent::value($value);
+
+		if ($value !== NULL)
 		{
 			$value = (int) $value;
 		}
 
-		return parent::value($value);
+		return $value;
 	}
 
 } // End Sprig_Field_Integer
