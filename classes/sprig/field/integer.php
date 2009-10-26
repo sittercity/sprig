@@ -9,24 +9,18 @@
  */
 class Sprig_Field_Integer extends Sprig_Field {
 
-	public $default = 0;
-
 	public $min_value;
 
 	public $max_value;
 
 	public function value($value)
 	{
-		if (empty($value) AND $this->empty)
-		{
-			$value = NULL;
-		}
-		else
+		if ( ! empty($value))
 		{
 			$value = (int) $value;
 		}
 
-		return $value;
+		return parent::value($value);
 	}
 
 } // End Sprig_Field_Integer
