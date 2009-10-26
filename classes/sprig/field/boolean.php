@@ -14,17 +14,12 @@ class Sprig_Field_Boolean extends Sprig_Field {
 	public $default = FALSE;
 
 	public $filters = array('filter_var' => array(FILTER_VALIDATE_BOOLEAN));
-	
+
 	public $append_label = TRUE;
 
-	public function set($value)
+	public function verbose($value)
 	{
-		return parent::set((bool) $value);
-	}
-
-	public function verbose()
-	{
-		return $this->value ? 'Yes' : 'No';
+		return $value ? 'Yes' : 'No';
 	}
 
 	public function input($name, $value, array $attr = NULL)
