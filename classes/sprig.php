@@ -448,7 +448,11 @@ abstract class Sprig {
 		}
 		else
 		{
-			if ($field instanceof Sprig_Field_ManyToMany)
+			if (isset($field->hash_with))
+			{
+				$value = call_user_func($field->hash_with, $value);
+			}
+			elseif ($field instanceof Sprig_Field_ManyToMany)
 			{
 				if ( ! isset($this->_original[$name]))
 				{
