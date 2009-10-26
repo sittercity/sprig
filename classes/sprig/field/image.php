@@ -57,6 +57,19 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 	 */
 	public $resize_type;
 
+	public function __construct(array $options = NULL)
+	{
+		if (empty($options['path']) OR ! is_dir($options['path']))
+		{
+			throw new Sprig_Exception('Image fields must have a directory path to save and load images from');
+		}
+
+		parent::__construct($options);
+
+		// Make sure the path has a trailing slash
+		$this->path = rtrim(str_replace('\\', '/', $this->path), '/').'/';
+	}
+
 	public function input($name, $value, array $attr = NULL)
 	{
 		$input = Form::file($name, $attr);
@@ -69,9 +82,9 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 		return $input;
 	}
 
-	public function verbose()
+	public function verbose($value)
 	{
-		return $this->value ? rtrim($this->path, '/').'/'.$this->value : '';
+		return $this->path.$value;
 	}
 
 } // End Sprig_Field_Image
