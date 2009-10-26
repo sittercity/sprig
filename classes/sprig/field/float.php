@@ -13,12 +13,24 @@ class Sprig_Field_Float extends Sprig_Field {
 
 	public function set($value)
 	{
-		return parent::set((float) $value);
+		if ( ! empty($value))
+		{
+			$value = (float) $value;
+		}
+
+		return parent::set($value);
 	}
 	
 	public function verbose()
 	{
-		return number_format($this->value, $this->places);
+		if ($this->places)
+		{
+			return number_format($this->value, $this->places);
+		}
+		else
+		{
+			return (string) $this->value;
+		}
 	}
 
 } // End Sprig_Field_Float
