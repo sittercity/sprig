@@ -29,7 +29,7 @@ class Sprig_Field_Timestamp extends Sprig_Field_Integer {
 
 	public function verbose($value)
 	{
-		if ($value)
+		if (is_integer($value))
 		{
 			return date($this->format, $value);
 		}
