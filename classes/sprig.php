@@ -257,11 +257,8 @@ abstract class Sprig {
 				}
 			}
 
-			if ($field->in_db)
-			{
-				// Set the default value for any field that is stored in the database
-				$this->_original[$name] = $field->value($field->default);
-			}
+			// Set the default value for any field that is stored in the database
+			$this->_original[$name] = $field->value($field->default);
 		}
 	}
 
@@ -311,9 +308,9 @@ abstract class Sprig {
 		{
 			$value = $this->_changed[$name];
 		}
-		elseif ($field->in_db)
+		else
 		{
-			if ( ! $this->loaded())
+			if ($field->in_db AND ! $this->loaded())
 			{
 				// Lazy loading, this field does not have a value yet
 				$this->load();
@@ -435,7 +432,7 @@ abstract class Sprig {
 		}
 		else
 		{
-			if (isset($field->hash_with))
+			if (isset($field->hash_with) AND ! empty($value))
 			{
 				$value = call_user_func($field->hash_with, $value);
 			}
