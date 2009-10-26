@@ -276,19 +276,6 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Clone fields when cloning the model.
-	 *
-	 * @return  void
-	 */
-	public function __clone()
-	{
-		// foreach ($this->_fields as $name => $field)
-		// {
-		// 	$this->_fields[$name] = clone $field;
-		// }
-	}
-
-	/**
 	 * Get the value of a field.
 	 *
 	 * @throws  Sprig_Exception  field does not exist
