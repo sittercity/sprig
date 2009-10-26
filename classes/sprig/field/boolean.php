@@ -27,13 +27,13 @@ class Sprig_Field_Boolean extends Sprig_Field {
 		return $this->value ? 'Yes' : 'No';
 	}
 
-	public function input($name, array $attr = NULL)
+	public function input($name, $value, array $attr = NULL)
 	{
-		$checkbox = form::checkbox($name, 1, $this->value, $attr);
-		if( $this->append_label )
+		$checkbox = Form::checkbox($name, 1, $value, $attr);
+		if ($this->append_label)
 		{
 			$checkbox .= ' '.$this->label;
-		} 
+		}
 		return  $checkbox;
 	}
 

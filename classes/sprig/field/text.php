@@ -9,9 +9,9 @@
  */
 class Sprig_Field_Text extends Sprig_Field_Char {
 
-	public function input($name, array $attr = NULL)
+	public function input($name, $value, array $attr = NULL)
 	{
-		return Form::textarea($name, $this->verbose(), $attr);
+		return Form::textarea($name, $value, $attr);
 	}
 
 } // End Sprig_Field_Text

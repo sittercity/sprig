@@ -57,7 +57,7 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 	 */
 	public $resize_type;
 
-	public function input($name, array $attr = array())
+	public function input($name, $value, array $attr = NULL)
 	{
 		$input = Form::file($name, $attr);
 
