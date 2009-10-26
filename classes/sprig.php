@@ -934,9 +934,9 @@ abstract class Sprig {
 		$data = $this->check($this->as_array());
 
 		$values = $relations = array();
-		foreach ($data as $field => $value)
+		foreach ($data as $name => $value)
 		{
-			$field = $this->_fields[$field];
+			$field = $this->_fields[$name];
 
 			if ($field instanceof Sprig_Field_Auto OR ! $field->in_db )
 			{
