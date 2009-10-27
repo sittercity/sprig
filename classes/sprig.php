@@ -435,7 +435,7 @@ abstract class Sprig {
 		}
 		else
 		{
-			if (isset($field->hash_with))
+			if (isset($field->hash_with) AND ! empty($value))
 			{
 				$value = call_user_func($field->hash_with, $value);
 			}
