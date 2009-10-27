@@ -744,7 +744,7 @@ abstract class Sprig {
 	 */
 	public function input($field, array $attr = NULL)
 	{
-		return $this->_fields[$field]->input($field, $attr);
+		return $this->_fields[$field]->input($field, $this->$field, $attr);
 	}
 
 	/**
@@ -796,7 +796,7 @@ abstract class Sprig {
 	 */
 	public function verbose($field)
 	{
-		return $this->_fields[$field]->verbose();
+		return $this->_fields[$field]->verbose($this->$field);
 	}
 
 	/**
