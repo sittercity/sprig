@@ -270,6 +270,12 @@ Also has the `path` property, the path to the directory where images will be sto
 
 #### Sprig_Field_HasOne
 
+A reference to another model by the foreign model primary key value. Does not produce a form input.
+
+Has the `model` property, the name of another Sprig model.
+
+#### Sprig_Field_BelongsTo
+
 A reference to another model by the foreign model primary key value. Represented by a select input.
 
 Has the `model` property, the name of another Sprig model.
