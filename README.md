@@ -7,24 +7,21 @@ A database modeling system for the [Kohana framework](http://kohanaphp.com/) (v3
 Each model must:
 
 * extend the `Sprig` class
-* define the database table name
 * define a protected `_init()` method and set the field mappings
 
 Example of a model:
 
     class Model_Post extends Sprig {
         
-        protected $_table = 'blog_posts';
-        
         protected function _init()
         {
             $this->_fields += array(
                 'id' => new Sprig_Field_Auto,
                 'title' => new Sprig_Field_Char,
-                'blog' => new Sprig_Field_ForeignKey(array(
+                'blog' => new Sprig_Field_BelongsTo(array(
                     'model' => 'Blog',
                 )),
-                'author' => new Sprig_Field_ForeignKey(array(
+                'author' => new Sprig_Field_BelongsTo(array(
                     'model' => 'User',
                 )),
                 'body' => new Sprig_Field_Text,
@@ -39,6 +36,8 @@ Example of a model:
 Loading models is done with the `Sprig::factory($name)` method:
 
     $post = Sprig::factory('post');
+
+Loading models by calling `new Model_Foo` will not work! You *must* use the `factory()` method.
 
 ### Data
 
@@ -101,16 +100,19 @@ If the model data does not satisfy the validation requirements, a `Validate_Exce
 
 Updating a record is done using the `update()` method:
 
-    $post->values($_POST);
-    
-    try
+    if ($_POST)
     {
-        $post->update();
+        try
+        {
+            $post->values($_POST)->update();
+        }
+        catch (Validate_Exception $e)
+        {
+            $errors = $e->array->errors('blog/post');
+        }
     }
-    catch (Validate_Exception $e)
-    {
-        $errors = $e->array->errors('blog/post');
-    }
+
+*Note that you must always call `load()` before `update()` or the query will not be built properly.*
 
 Deleting a record is done using the `delete()` method:
 
@@ -260,23 +262,23 @@ Extends `Sprig_Field_Char`, but requires a valid email address as the value.
 
 Extends `Sprig_Field_Integer`, but requires a valid UNIX timestamp as the value.
 
-Also has the `format` and `auto_now_create` and `auto_now_update` properties.
+Also has the `format` (any string accepted by [date](http://php.net/date)) and `auto_now_create` and `auto_now_update` properties.
 
 #### Sprig_Field_Image
 
 Extends `Sprig_Field_Char`, represents an image file.
 
-Also has the `path` property, the path to the directory where images will be stored.
+Requires the `path` property, the path to the directory where images will be stored.
 
 #### Sprig_Field_HasOne
 
-A reference to another model by the foreign model primary key value. Does not produce a form input.
+A reference to another model by the parent model primary key value. Does not produce a form input.
 
 Has the `model` property, the name of another Sprig model.
 
 #### Sprig_Field_BelongsTo
 
-A reference to another model by the foreign model primary key value. Represented by a select input.
+A reference to another model by the child model primary key value. Represented by a select input.
 
 Has the `model` property, the name of another Sprig model.
 
@@ -286,11 +288,9 @@ A reference to many other models by this model primary key value. Does not produ
 
 Has the `model` property, the name of another Sprig model.
 
-Uses the `column` property to define the related column name. For instance, if you have a `users.id` primary key and a `blog_posts.user_id` field, then the `column` value for `blog_post->user` wouldbe `user_id`.
-
 #### Sprig_Field_ManyToMany
 
-A reference to another model by a pivot table that contains the both primary keys.
+A reference to another model by a pivot table that contains the both primary keys. Represented by a list of checkbox inputs.
 
 Has the `model` property, the name of another Sprig model.
 
