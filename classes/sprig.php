@@ -824,6 +824,8 @@ abstract class Sprig {
 
 		$query->from($this->_table);
 
+		$table = is_array($this->_table) ? $this->_table[1] : $this->_table;
+
 		foreach ($this->_fields as $name => $field)
 		{
 			if ( ! $field->in_db)
@@ -834,16 +836,16 @@ abstract class Sprig {
 
 			if ($name === $field->column)
 			{
-				$query->select($name);
+				$query->select("{$table}.{$name}");
 			}
 			else
 			{
-				$query->select(array($field->column, $name));
+				$query->select(array("{$table}.{$field->column}", $name));
 			}
 
 			if (array_key_exists($name, $changed))
 			{
-				$query->where($field->column, '=', $changed[$name]);
+				$query->where("{$table}.{$field->column}", '=', $changed[$name]);
 			}
 		}
 
