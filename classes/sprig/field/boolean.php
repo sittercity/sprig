@@ -27,9 +27,9 @@ class Sprig_Field_Boolean extends Sprig_Field {
 		$checkbox = Form::checkbox($name, 1, $value, $attr);
 		if ($this->append_label)
 		{
-			$checkbox .= ' '.$this->label;
+			$checkbox = "<label>{$checkbox} {$this->label}</label>";
 		}
-		return  $checkbox;
+		return $checkbox;
 	}
 
 } // End Sprig_Field_Boolean
