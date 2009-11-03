@@ -25,7 +25,7 @@ class Sprig_Field_Float extends Sprig_Field {
 
 	public function verbose($value)
 	{
-		if (is_float($value))
+		if (is_numeric($value))
 		{
 			if ($this->places)
 			{
