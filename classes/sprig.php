@@ -1102,13 +1102,22 @@ abstract class Sprig {
 	 * - If the record is not loaded, it will be deleted using all changed fields.
 	 * - If no data has been changed, the delete will be ignored.
 	 *
+	 * @param   object   any Database_Query_Builder_Delete, NULL for none
 	 * @return  $this
 	 */
-	public function delete()
+	public function delete(Database_Query_Builder_Delete $query = NULL)
 	{
+		if ($query)
+		{
+			$query->table($this->_table);
+		}
+
 		if ($this->loaded())
 		{
-			$query = DB::delete($this->_table);
+			if ( ! $query)
+			{
+				$query = DB::delete($this->_table);
+			}
 
 			if (is_array($this->_primary_key))
 			{
@@ -1124,7 +1133,10 @@ abstract class Sprig {
 		}
 		elseif ($changed = $this->changed())
 		{
-			$query = DB::delete($this->_table);
+			if ( ! $query)
+			{
+				$query = DB::delete($this->_table);
+			}
 
 			foreach ($changed as $field => $value)
 			{
