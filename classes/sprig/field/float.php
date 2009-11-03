@@ -11,13 +11,26 @@ class Sprig_Field_Float extends Sprig_Field {
 
 	public $places;
 
-	public function set($value)
+	public function value($value)
 	{
-		$value = parent::set($value);
-
-		if ($value !== NULL)
+		if ($this->null AND empty($value))
 		{
-			$value = (float) $value;
+			// Empty values are converted to NULLs
+			$value = NULL;
+		}
+		else
+		{
+			if (is_string($value))
+			{
+				$locale = localeconv();
+
+				// Locale-aware conversion from string to float:
+				// - Remove the thousands separator
+				// - Replace the decimal point with a period
+				$value = str_replace(array($locale['thousands_sep'], $locale['decimal_point']), array('', '.'), $value);
+			}
+
+			$value = floatval($value);
 		}
 
 		return $value;
