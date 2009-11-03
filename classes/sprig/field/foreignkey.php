@@ -7,7 +7,7 @@
  * @copyright  (c) 2009 Woody Gilk
  * @license    MIT
  */
-abstract class Sprig_Field_ForeignKey extends Sprig_Field_Integer {
+abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 
 	public $null = TRUE;
 
