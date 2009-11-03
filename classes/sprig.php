@@ -927,7 +927,7 @@ abstract class Sprig {
 
 			if ($field instanceof Sprig_Field_Auto OR ! $field->in_db )
 			{
-				if ($field instanceof Sprig_Field_HasMany)
+				if ($field instanceof Sprig_Field_ManyToMany)
 				{
 					$relations[$name] = $value;
 				}
