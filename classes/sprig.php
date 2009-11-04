@@ -806,6 +806,42 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Count the number of records using the current data.
+	 *
+	 * @param   object   any Database_Query_Builder_Select, NULL for none
+	 * @return  $this
+	 */
+	public function count(Database_Query_Builder_Select $query = NULL)
+	{
+		if ( ! $query)
+		{
+			$query = DB::select();
+		}
+
+		$table = is_array($this->_table) ? $this->_table[1] : $this->_table;
+
+		if ($changed = $this->changed())
+		{
+			foreach ($changed as $field => $value)
+			{
+				$field = $this->_fields[$field];
+
+				if ( ! $field->in_db)
+				{
+					continue;
+				}
+
+				$query->where("{$table}.{$field->column}", '=', $value);
+			}
+		}
+
+		return $query->select(array('COUNT("*")', 'total'))
+			->from($this->_table)
+			->execute($this->_db)
+			->get('total');
+	}
+
+	/**
 	 * Load a single record using the current data.
 	 *
 	 * @param   object   any Database_Query_Builder_Select, NULL for none
