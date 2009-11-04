@@ -226,6 +226,12 @@ abstract class Sprig {
 				$field->label = Inflector::humanize($name);
 			}
 
+			if ($field->null)
+			{
+				// Fields that allow NULL values must accept empty values
+				$field->empty = TRUE;
+			}
+
 			if ($field->editable)
 			{
 				if ( ! $field->empty AND ! isset($field->rules['not_empty']))
