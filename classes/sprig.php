@@ -769,7 +769,7 @@ abstract class Sprig {
 			{
 				if ($labels === TRUE)
 				{
-					$key = form::label($name, $field->label);
+					$key = $field->label($name);
 				}
 				else
 				{
@@ -787,11 +787,12 @@ abstract class Sprig {
 	 * Return a single field label.
 	 *
 	 * @param   string  field name
+	 * @param   array   label attributes
 	 * @return  string
 	 */
-	public function label($field)
+	public function label($field, array $attr = NULL)
 	{
-		return $this->_fields[$field]->label;
+		return $this->_fields[$field]->label($field, $attr);
 	}
 
 	/**

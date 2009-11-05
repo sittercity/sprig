@@ -83,7 +83,7 @@ abstract class Sprig_Field {
 
 	public function label($name, array $attr = NULL)
 	{
-		return Form::label($name, $this->label, $attr);
+		return Form::label($name, UTF8::ucwords($this->label), $attr);
 	}
 
 } // End Sprig_Field
