@@ -96,7 +96,7 @@ abstract class Sprig {
 	 *
 	 * @return  void
 	 */
-	final protected function __construct()
+	protected function __construct()
 	{
 		if ($this->_init)
 		{
@@ -276,7 +276,7 @@ abstract class Sprig {
 	 *
 	 * @return  string
 	 */
-	final public function __toString()
+	public function __toString()
 	{
 		return $this->_model;
 	}
