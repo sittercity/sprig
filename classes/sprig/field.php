@@ -10,89 +10,75 @@
 abstract class Sprig_Field {
 
     /**
-     * Allow `empty()` values to be used. Default is `FALSE`.
-     * @var bool
+     * @var bool Allow `empty()` values to be used. Default is `FALSE`.
      */
 	public $empty = FALSE;
 
     /**
-     * A primary key field. Multiple primary keys (composite key) can be specified. Default is `FALSE`.
-     * @var bool
+     * @var bool A primary key field. Multiple primary keys (composite key) can be specified. Default is `FALSE`.
      */
 	public $primary = FALSE;
 
     /**
-     * This field must have a unique value within the model table. Default is `FALSE`.
-     * @var bool
+     * @var bool This field must have a unique value within the model table. Default is `FALSE`.
      */
 	public $unique = FALSE;
 
     /**
-     * Convert all `empty()` values to `NULL`. Default is `FALSE`.
-     * @var bool
+     * @var bool Convert all `empty()` values to `NULL`. Default is `FALSE`.
      */
 	public $null = FALSE;
 
     /**
-     * Show the field in forms. Default is `TRUE`.
-     * @var bool
+     * @var bool Show the field in forms. Default is `TRUE`.
      */
 	public $editable = TRUE;
 
     /**
-     * Default value for this field. Default is `''` (an empty string).
-     * @var string
+     * @var string Default value for this field. Default is `''` (an empty string).
      */
 	public $default = '';
 
     /**
-     * Limit the value of this field to an array of choices. This will change the form input into a select list. No default value.
-     * @var array
+     * @var array Limit the value of this field to an array of choices. This will change the form input into a select list. No default value.
      */
 	public $choices;
 
     /**
-     * Database column name for this field. Default will be the same as the field name,
+     * @var string Database column name for this field. Default will be the same as the field name,
      * except for foreign keys, which will use the field name with `_id` appended.
      * In the case of HasMany fields, this value is the column name that contains the
      * foreign key value.
-     * @var string
      */
 	public $column;
 
     /**
-     * Human readable label. Default will be the field name converted with `Inflector::humanize()`.
-     * @var string
+     * @var string Human readable label. Default will be the field name converted with `Inflector::humanize()`.
      */
 	public $label;
 
     /**
-     * Description of the field. Default is `''` (an empty string).
-     * @var string
+     * @var string Description of the field. Default is `''` (an empty string).
      */
 	public $description = '';
 
     /**
-     * If true, the column is present in the database table. Default: TRUE
-     * @var bool
+     * @var bool The column is present in the database table. Default: TRUE
      */
 	public $in_db = TRUE;
 
     /**
-     * {@link Kohana_Validate} filters for this field.
-     * @var array
+     * @var array {@link Kohana_Validate} filters for this field.
      */
 	public $filters = array();
 
     /**
-     * {@link Kohana_Validate} rules for this field.
-     * @var array
+     * @var array {@link Kohana_Validate} rules for this field.
      */
 	public $rules = array();
 
     /**
-     * {@link Kohana_Validate} callbacks for this field.
-     * @var array
+     * @var array {@link Kohana_Validate} callbacks for this field.
      */
 	public $callbacks = array();
 
