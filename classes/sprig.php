@@ -586,22 +586,33 @@ abstract class Sprig {
 	}
 
 	/**
-	 * Returns the database instance used for this model.
+	 * Gets and sets the database instance used for this model.
 	 *
 	 * @return  string
 	 */
-	public function db()
+	public function db($db = NULL)
 	{
+		if ($db)
+		{
+			$this->_db = $db;
+		}
+
 		return $this->_db;
 	}
 
 	/**
-	 * Returns the table name of the model.
+	 * Gets and sets the table name of the model.
 	 *
-	 * @return  string
+	 * @param   string   new table name
+	 * @return  string   table name
 	 */
-	public function table()
+	public function table($table = NULL)
 	{
+		if ($table)
+		{
+			$this->_table = $table;
+		}
+
 		return $this->_table;
 	}
 
