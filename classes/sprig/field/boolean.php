@@ -17,6 +17,11 @@ class Sprig_Field_Boolean extends Sprig_Field {
 
 	public $append_label = TRUE;
 
+	public function value($value)
+	{
+		return (boolean) $value;
+	}
+
 	public function verbose($value)
 	{
 		return $value ? 'Yes' : 'No';
@@ -24,7 +29,7 @@ class Sprig_Field_Boolean extends Sprig_Field {
 
 	public function input($name, $value, array $attr = NULL)
 	{
-		$checkbox = Form::checkbox($name, 1, $value, $attr);
+		$checkbox = Form::checkbox($name, 1, $this->value($value), $attr);
 		if ($this->append_label)
 		{
 			$checkbox = "<label>{$checkbox} {$this->label}</label>";
