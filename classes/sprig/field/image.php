@@ -74,9 +74,9 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 	{
 		$input = Form::file($name, $attr);
 
-		if ($this->value)
+		if ($value)
 		{
-			$input .= HTML::image($this->verbose());
+			$input .= HTML::image($this->verbose($value));
 		}
 
 		return $input;
