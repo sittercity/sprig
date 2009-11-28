@@ -108,21 +108,20 @@ abstract class Sprig_Field {
 
 	public function verbose($value)
 	{
-		return (string) $this->value($value);
+		$value = $this->value($value);
+
+		return (string) isset($this->choices[$value]) ? $this->choices[$value] : $value;
 	}
 
 	public function input($name, $value, array $attr = NULL)
 	{
-		// Make the value verbose
-		$value = $this->verbose($value);
-
 		if (is_array($this->choices))
 		{
-			return Form::select($name, $this->choices, $value, $attr);
+			return Form::select($name, $this->choices, $this->value($value), $attr);
 		}
 		else
 		{
-			return Form::input($name, $value, $attr);
+			return Form::input($name, $this->verbose($value), $attr);
 		}
 	}
 
