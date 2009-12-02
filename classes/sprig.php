@@ -354,7 +354,7 @@ abstract class Sprig {
 						{
 							$query = DB::select()
 								->join($field->through)
-									->on($model->fk($field->through), '=', $model->pk())
+									->on($model->fk($field->through), '=', $model->pk(TRUE))
 								->where($this->fk($field->through), '=', $this->{$this->_primary_key});
 						}
 					}
