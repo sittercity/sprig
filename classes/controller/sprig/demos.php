@@ -1,6 +1,6 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class Controller_Sprig_Tests extends Controller_Template {
+class Controller_Sprig_Demos extends Controller_Template {
 
 	public $template = 'sprig/template';
 
