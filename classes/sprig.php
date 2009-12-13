@@ -865,12 +865,6 @@ abstract class Sprig {
 		// Load changed values as search parameters
 		$changed = $this->changed();
 
-		if ($query === NULL AND $limit === 1 AND ! $changed)
-		{
-			// No query needs to be executed
-			return $this;
-		}
-
 		if ($query === NULL)
 		{
 			$query = DB::select();
