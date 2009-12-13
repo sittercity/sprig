@@ -1,19 +1,29 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class Controller_Sprig_Tests extends Controller {
+class Controller_Sprig_Tests extends Controller_Template {
+
+	public $template = 'sprig/template';
 
 	public function action_index()
 	{
-		$this->request->response = View::factory('profiler/stats');
+		$this->template->content = View::factory('sprig/demos/index')
+			->bind('students', $students);
 
-		$student = Sprig::factory('student')->load();
+		$students = Sprig::factory('student')->load(NULL, FALSE);
+	}
 
-		echo Kohana::debug('Student', $student->as_array());
-		echo Kohana::debug('Car', $student->car->load()->as_array());
-		echo Kohana::debug('Classes', $student->classes->as_array('id', 'name'));
-		echo Kohana::debug('Memberships', count($student->memberships));
-		echo Kohana::debug('Clubs', $student->clubs->as_array('id', 'name'));
+	public function action_clubs()
+	{
+		
+		
+		echo Kohana::debug('Clubs');
 
+		$clubs = Sprig::factory('club')->load(NULL, FALSE);
+
+		foreach ($clubs as $club)
+		{
+			echo Kohana::debug($club->as_array());
+		}
 	}
 
 } // End Sprig_Test
