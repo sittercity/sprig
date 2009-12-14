@@ -79,8 +79,8 @@ abstract class Sprig {
 	// Initialization status
 	protected $_init = FALSE;
 
-	// Object loaded status
-	protected $_loaded = FALSE;
+	// Object state
+	protected $_state = 'new';
 
 	// Original object data
 	protected $_original = array();
@@ -100,10 +100,10 @@ abstract class Sprig {
 	{
 		if ($this->_init)
 		{
-			if ($this->_loaded === 1)
+			if ($this->state() === 'loading')
 			{
 				// Object loading via mysql_fetch_object or similar has finished
-				$this->_loaded = TRUE;
+				$this->state('loaded');
 			}
 
 			// Can only be called once
@@ -296,7 +296,7 @@ abstract class Sprig {
 			$this->__construct();
 
 			// This object is about to be loaded by mysql_fetch_object() or similar
-			$this->_loaded = 1;
+			$this->state('loading');
 		}
 
 		if ( ! isset($this->_fields[$name]))
@@ -319,12 +319,6 @@ abstract class Sprig {
 		}
 		elseif (array_key_exists($name, $this->_original))
 		{
-			if ($field->in_db AND ! $this->loaded())
-			{
-				// Lazy loading, this field does not have a value yet
-				$this->load();
-			}
-
 			$value = $this->_original[$name];
 		}
 
@@ -413,7 +407,7 @@ abstract class Sprig {
 			$this->__construct();
 
 			// This object is about to be loaded by mysql_fetch_object() or similar
-			$this->_loaded = 1;
+			$this->state('loading');
 		}
 
 		if ( ! isset($this->_fields[$name]))
@@ -425,53 +419,94 @@ abstract class Sprig {
 		// Get the field object
 		$field = $this->_fields[$name];
 
-		if (isset($field->model)
-			AND ! ($field instanceof Sprig_Field_BelongsTo OR $field instanceof Sprig_Field_ManyToMany))
+		if ($this->state() === 'loading')
+		{
+			// Set the original value directly
+			$this->_original[$name] = $field->value($value);
+
+			// No extra processing necessary
+			return;
+		}
+		elseif ($field instanceof Sprig_Field_ManyToMany)
+		{
+			if ( ! isset($this->_original[$name]))
+			{
+				$model = Sprig::factory($field->model);
+
+				$result = DB::select($model->fk())
+					->from($field->through)
+					->where($this->fk(), '=', $this->{$this->_primary_key})
+					->execute($this->_db);
+
+				// The original value for the relationship must be defined
+				// before we can tell if the value has been changed
+				$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
+			}
+		}
+		elseif ($field instanceof Sprig_Field_HasMany)
+		{
+			foreach ($value as $key => $val)
+			{
+				if ( ! $val instanceof Sprig)
+				{
+					$model = Sprig::factory($field->model);
+					$pk    = $model->pk();
+
+					if ( ! is_array($val))
+					{
+						// Assume the value is a primary key
+						$val = array($pk => $val);
+					}
+
+					if (isset($val[$pk]))
+					{
+						// Load the record so that changed values can be determined
+						$model->values(array($pk => $val[$pk]))->load();
+					}
+
+					$value[$key] = $model->values($val);
+				}
+			}
+
+			// Set the related objects to this value
+			$this->_related[$name] = $value;
+
+			// No extra processing necessary
+			return;
+		}
+		elseif ($field instanceof Sprig_Field_BelongsTo)
+		{
+			// Pass
+		}
+		elseif ($field instanceof Sprig_Field_ForeignKey)
 		{
 			throw new Sprig_Exception('Cannot change relationship of :model->:field using __set()',
 				array(':model' => $this->_model, ':field' => $name));
 		}
 
-		// Convert the value to the correct type
-		$value = $field->value($value);
+		// Get the correct type of value
+		$changed = $field->value($value);
 
-		if ($this->_loaded === 1)
+		if (isset($field->hash_with) AND $changed)
 		{
-			$this->_original[$name] = $value;
+			$changed = call_user_func($field->hash_with, $changed);
 		}
-		else
+
+		if ($changed !== $this->_original[$name])
 		{
-			if (isset($field->hash_with) AND ! empty($value))
+			if (isset($this->_related[$name]))
 			{
-				$value = call_user_func($field->hash_with, $value);
-			}
-			elseif ($field instanceof Sprig_Field_ManyToMany)
-			{
-				if ( ! isset($this->_original[$name]))
-				{
-					$model = Sprig::factory($field->model);
-
-					$result = DB::select($model->fk())
-						->from($field->through)
-						->where($this->fk(), '=', $this->{$this->_primary_key})
-						->execute($this->_db);
-
-					// The original value for the relationship must be defined
-					// before we can tell if the value has been changed
-					$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
-				}
+				// Clear stale related objects
+				unset($this->_related[$name]);
 			}
 
-			if ($value !== $this->_original[$name])
-			{
-				if (isset($this->_related[$name]))
-				{
-					// Clear stale related objects
-					unset($this->_related[$name]);
-				}
+			// Set a changed value
+			$this->_changed[$name] = $changed;
 
-				// Set a changed value
-				$this->_changed[$name] = $value;
+			if ($field instanceof Sprig_Field_ForeignKey AND is_object($value))
+			{
+				// Store the related object for later use
+				$this->_related[$name] = $value;
 			}
 		}
 	}
@@ -693,13 +728,64 @@ abstract class Sprig {
 	}
 
 	/**
+	 * Get or set the model status.
+	 *
+	 * Setting the model status can have side effects. Changing the state to
+	 * "loaded" will merge the currently changed data with the original data.
+	 * Changing to "new" will reset the original data to the default values.
+	 * Setting a "deleted" state will reset the changed data.
+	 *
+	 * Possible model states:
+	 *
+	 * - new:     record has not been created
+	 * - deleted: record has been deleted
+	 * - loaded:  record has been loaded
+	 *
+	 * @param   string  new object status
+	 * @return  string  when getting
+	 * @return  $this   when setting
+	 */
+	public function state($state = NULL)
+	{
+		if ($state)
+		{
+			switch ($state)
+			{
+				case 'new':
+					// Reset original data
+					$this->_original = Sprig::factory($this->_model)->as_array();
+				break;
+				case 'loaded':
+					// Merge the changed data into the original data
+					$this->_original = array_merge($this->_original, $this->_changed);
+					$this->_changed  = array();
+				break;
+				case 'deleted':
+				case 'loading':
+					// Pass
+				break;
+				default:
+					throw new Sprig_Exception('Unknown model state: :state', array(':state' => $state));
+				break;
+			}
+
+			// Set the new state
+			$this->_state = $state;
+
+			return $this;
+		}
+
+		return $this->_state;
+	}
+
+	/**
 	 * Object data loaded status.
 	 *
 	 * @return  boolean
 	 */
 	public function loaded()
 	{
-		return (bool) $this->_loaded;
+		return $this->_state === 'loaded';
 	}
 
 	/**
@@ -865,7 +951,7 @@ abstract class Sprig {
 		// Load changed values as search parameters
 		$changed = $this->changed();
 
-		if ($query === NULL)
+		if ( ! $query)
 		{
 			$query = DB::select();
 		}
@@ -902,6 +988,14 @@ abstract class Sprig {
 			$query->limit($limit);
 		}
 
+		if ($this->_sorting)
+		{
+			foreach ($this->_sorting as $field => $direction)
+			{
+				$query->order_by($field, $direction);
+			}
+		}
+
 		if ($limit === 1)
 		{
 			$result = $query
@@ -909,40 +1003,13 @@ abstract class Sprig {
 
 			if (count($result))
 			{
-				// Set the loaded statust before setting values to prevent an
-				// infinate loop with lazy loading in __get()
-				$this->_loaded = TRUE;
-
-				// Get the values from the result
-				$values = $result->current();
-
-				// $this->values($values);
-
-				foreach ($values as $name => $value)
-				{
-					// Set the original value
-					$this->_original[$name] = $this->_fields[$name]->value($value);
-
-					if ($this->changed($name))
-					{
-						// Remove stale changed values
-						unset($this->_changed[$name]);
-					}
-				}
+				$this->values($result[0])->state('loaded');
 			}
 
 			return $this;
 		}
 		else
 		{
-			if ($this->_sorting)
-			{
-				foreach ($this->_sorting as $field => $direction)
-				{
-					$query->order_by($field, $direction);
-				}
-			}
-
 			return $query
 				->as_object(get_class($this))
 				->execute($this->_db);
@@ -1001,7 +1068,7 @@ abstract class Sprig {
 				if ($this->_fields[$name] instanceof Sprig_Field_Auto)
 				{
 					// Set the auto-increment primary key to the insert id
-					$this->_original[$name] = $this->_fields[$name]->value($id);
+					$this->$name = $id;
 
 					// There can only be 1 auto-increment column per model
 					break;
@@ -1010,17 +1077,11 @@ abstract class Sprig {
 		}
 		elseif ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
 		{
-			$this->_original[$this->_primary_key] = $this->_fields[$this->_primary_key]->value($id);
+			$this->{$this->_primary_key} = $id;
 		}
 
-		// Load the original data for this record
-		$this->_original = $this->as_array();
-
-		// All changed data is in sync
-		$this->_changed = array();
-
 		// Object is now loaded
-		$this->_loaded = TRUE;
+		$this->state('loaded');
 
 		if ($relations)
 		{
@@ -1157,18 +1218,24 @@ abstract class Sprig {
 	 */
 	public function delete(Database_Query_Builder_Delete $query = NULL)
 	{
-		if ($query)
+		if ( ! $query)
+		{
+			$query = DB::delete($this->_table);
+		}
+		else
 		{
 			$query->table($this->_table);
 		}
 
-		if ($this->loaded())
+		if ($changed = $this->changed())
 		{
-			if ( ! $query)
+			foreach ($changed as $field => $value)
 			{
-				$query = DB::delete($this->_table);
+				$query->where($this->_fields[$field]->column, '=', $value);
 			}
-
+		}
+		else
+		{
 			if (is_array($this->_primary_key))
 			{
 				foreach($this->_primary_key as $field)
@@ -1181,32 +1248,10 @@ abstract class Sprig {
 				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
 			}
 		}
-		elseif ($changed = $this->changed())
+
+		if ($query->execute($this->_db))
 		{
-			if ( ! $query)
-			{
-				$query = DB::delete($this->_table);
-			}
-
-			foreach ($changed as $field => $value)
-			{
-				$query->where($this->_fields[$field]->column, '=', $value);
-			}
-		}
-
-		if (isset($query) AND $query->execute($this->_db))
-		{
-			// Reset all object data
-			$this->_changed = $this->_original = array();
-
-			foreach ($this->_fields as $name => $field)
-			{
-				if ($field->in_db)
-				{
-					// Repopulate the default values for the model
-					$this->_original[$name] = $field->value($field->default);
-				}
-			}
+			$this->state('deleted');
 		}
 
 		return $this;
