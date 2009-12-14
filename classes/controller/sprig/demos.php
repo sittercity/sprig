@@ -12,6 +12,36 @@ class Controller_Sprig_Demos extends Controller_Template {
 		$students = Sprig::factory('student')->load(NULL, FALSE);
 	}
 
+	public function action_student($id = NULL)
+	{
+		$this->template->content = View::factory('sprig/demos/student')
+			->bind('student', $student);
+
+		$student = Sprig::factory('student', array('id' => $id))
+			->load()
+			->values($_POST);
+
+		$student->classes = array(1, 3);
+
+		
+
+		echo Kohana::debug($student->classes);exit;
+
+		if ($_POST)
+		{
+			try
+			{
+				$student->values($_POST)->save();
+
+				$this->request->redirect($this->request->uri());
+			}
+			catch (Validate_Exception $e)
+			{
+				$errors = $e->array->errors('student/edit');
+			}
+		}
+	}
+
 	public function action_clubs()
 	{
 		

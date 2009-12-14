@@ -1,6 +1,6 @@
 <?php foreach ($students as $student): ?>
 
-<h1><?php echo HTML::anchor('sprig_demos/student/'.$student->id, $student->name) ?></h1>
+<h1><?php echo HTML::anchor(Route::get('sprig')->uri(array('action' => 'student', 'id' => $student->id)), $student->name) ?></h1>
 
 <h2>Classes</h2>
 <ul>
