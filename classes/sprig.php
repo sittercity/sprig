@@ -419,53 +419,94 @@ abstract class Sprig {
 		// Get the field object
 		$field = $this->_fields[$name];
 
-		if (isset($field->model)
-			AND ! ($field instanceof Sprig_Field_BelongsTo OR $field instanceof Sprig_Field_ManyToMany))
+		if ($this->state() === 'loading')
+		{
+			// Set the original value directly
+			$this->_original[$name] = $field->value($value);
+
+			// No extra processing necessary
+			return;
+		}
+		elseif ($field instanceof Sprig_Field_ManyToMany)
+		{
+			if ( ! isset($this->_original[$name]))
+			{
+				$model = Sprig::factory($field->model);
+
+				$result = DB::select($model->fk())
+					->from($field->through)
+					->where($this->fk(), '=', $this->{$this->_primary_key})
+					->execute($this->_db);
+
+				// The original value for the relationship must be defined
+				// before we can tell if the value has been changed
+				$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
+			}
+		}
+		elseif ($field instanceof Sprig_Field_HasMany)
+		{
+			foreach ($value as $key => $val)
+			{
+				if ( ! $val instanceof Sprig)
+				{
+					$model = Sprig::factory($field->model);
+					$pk    = $model->pk();
+
+					if ( ! is_array($val))
+					{
+						// Assume the value is a primary key
+						$val = array($pk => $val);
+					}
+
+					if (isset($val[$pk]))
+					{
+						// Load the record so that changed values can be determined
+						$model->values(array($pk => $val[$pk]))->load();
+					}
+
+					$value[$key] = $model->values($val);
+				}
+			}
+
+			// Set the related objects to this value
+			$this->_related[$name] = $value;
+
+			// No extra processing necessary
+			return;
+		}
+		elseif ($field instanceof Sprig_Field_BelongsTo)
+		{
+			// Pass
+		}
+		elseif ($field instanceof Sprig_Field_ForeignKey)
 		{
 			throw new Sprig_Exception('Cannot change relationship of :model->:field using __set()',
 				array(':model' => $this->_model, ':field' => $name));
 		}
 
-		// Convert the value to the correct type
-		$value = $field->value($value);
+		// Get the correct type of value
+		$changed = $field->value($value);
 
-		if ($this->state() === 'loading')
+		if (isset($field->hash_with) AND $changed)
 		{
-			$this->_original[$name] = $value;
+			$changed = call_user_func($field->hash_with, $changed);
 		}
-		else
+
+		if ($changed !== $this->_original[$name])
 		{
-			if (isset($field->hash_with) AND ! empty($value))
+			if (isset($this->_related[$name]))
 			{
-				$value = call_user_func($field->hash_with, $value);
-			}
-			elseif ($field instanceof Sprig_Field_ManyToMany)
-			{
-				if ( ! isset($this->_original[$name]))
-				{
-					$model = Sprig::factory($field->model);
-
-					$result = DB::select($model->fk())
-						->from($field->through)
-						->where($this->fk(), '=', $this->{$this->_primary_key})
-						->execute($this->_db);
-
-					// The original value for the relationship must be defined
-					// before we can tell if the value has been changed
-					$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
-				}
+				// Clear stale related objects
+				unset($this->_related[$name]);
 			}
 
-			if ($value !== $this->_original[$name])
-			{
-				if (isset($this->_related[$name]))
-				{
-					// Clear stale related objects
-					unset($this->_related[$name]);
-				}
+			// Set a changed value
+			$this->_changed[$name] = $changed;
 
-				// Set a changed value
-				$this->_changed[$name] = $value;
+			if ($field instanceof Sprig_Field_ForeignKey AND is_object($value))
+			{
+				// Store the related object for later use
+				$this->_related[$name] = $value;
 			}
 		}
 	}
