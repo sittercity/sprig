@@ -17,21 +17,13 @@ class Controller_Sprig_Demos extends Controller_Template {
 		$this->template->content = View::factory('sprig/demos/student')
 			->bind('student', $student);
 
-		$student = Sprig::factory('student', array('id' => $id))
-			->load()
-			->values($_POST);
-
-		$student->classes = array(1, 3);
-
-		
-
-		echo Kohana::debug($student->classes);exit;
+		$student = Sprig::factory('student', array('id' => $id))->load();
 
 		if ($_POST)
 		{
 			try
 			{
-				$student->values($_POST)->save();
+				$student->values($_POST)->update();
 
 				$this->request->redirect($this->request->uri());
 			}

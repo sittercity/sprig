@@ -14,6 +14,7 @@ class Model_Student extends Sprig {
 			)),
 			'clubs' => new Sprig_Field_ManyToMany(array(
 				'through' => 'memberships',
+				'editable' => FALSE,
 			)),
 			'memberships' => new Sprig_Field_HasMany,
 			'classes' => new Sprig_Field_ManyToMany,
