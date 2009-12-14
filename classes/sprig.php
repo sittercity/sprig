@@ -319,12 +319,6 @@ abstract class Sprig {
 		}
 		elseif (array_key_exists($name, $this->_original))
 		{
-			if ($field->in_db AND ! $this->loaded())
-			{
-				// Lazy loading, this field does not have a value yet
-				$this->load();
-			}
-
 			$value = $this->_original[$name];
 		}
 
