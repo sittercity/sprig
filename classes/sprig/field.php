@@ -62,6 +62,11 @@ abstract class Sprig_Field {
      */
 	public $description = '';
 
+	 /**
+     * @var array {@link Kohana_HTML} html attribute for the field.
+     */
+	public $attributes = array();
+
     /**
      * @var bool The column is present in the database table. Default: TRUE
      */
