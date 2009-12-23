@@ -847,6 +847,11 @@ abstract class Sprig {
 	 */
 	public function input($field, array $attr = NULL)
 	{
+		if ($attr === NULL)
+		{
+			$attr = $field->attributes;
+		}
+
 		return $this->_fields[$field]->input($field, $this->$field, $attr);
 	}
 
@@ -873,7 +878,7 @@ abstract class Sprig {
 					$key = $name;
 				}
 
-				$inputs[$key] = $field->input($name, $this->$name);
+				$inputs[$key] = $field->input($name, $this->$name, $field->attributes);
 			}
 		}
 
