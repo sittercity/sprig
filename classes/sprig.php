@@ -64,7 +64,7 @@ abstract class Sprig {
 	/**
 	 * @var  mixed  primary key string or array (for composite keys)
 	 */
-	protected $_primary_key;
+	protected $_primary_key = array();
 
 	/**
 	 * @var  string  title key string (for select lists)
@@ -132,22 +132,7 @@ abstract class Sprig {
 		{
 			if ($field->primary === TRUE)
 			{
-				if ( ! $this->_primary_key)
-				{
-					// This is the primary key
-					$this->_primary_key = $name;
-				}
-				else
-				{
-					if (is_string($this->_primary_key))
-					{
-						// More than one primary key found, create a list of keys
-						$this->_primary_key = array($this->_primary_key);
-					}
-
-					// Add this key to the list
-					$this->_primary_key[] = $name;
-				}
+				$this->_primary_key[$name] = $name;
 			}
 		}
 
@@ -205,11 +190,13 @@ abstract class Sprig {
 
 				if ($field instanceof Sprig_Field_BelongsTo)
 				{
-					$field->column = Sprig::factory($field->model)->fk();
+					$columns = Sprig::factory($field->model)->fk();
+					$field->column = $columns[0];
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
-					$field->column = $this->fk();
+					$columns = $this->fk();
+					$field->column = $columns[0];
 				}
 				elseif ($field instanceof Sprig_Field_ForeignKey)
 				{
@@ -340,29 +327,59 @@ abstract class Sprig {
 							}
 							else
 							{
-								$query = DB::select()
-									->where($model->pk(), 'IN', $value);
+								$query = DB::select();
+								
+								echo Kohana::debug($value);exit;
+								
+								foreach ($model->pk() as $pk)
+								{
+									
+								}
+								
+									// ->where($model->pk(), 'IN', $value);
 							}
 						}
 						else
 						{
 							$query = DB::select()
-								->join($field->through)
-									->on($model->fk($field->through), '=', $model->pk(TRUE))
-								->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+								->join($field->through);
+
+							$columns = array_combine($model->fk($field->through), $model->pk(TRUE));
+
+							foreach ($columns as $fk => $pk)
+							{
+								$query->on($fk, '=', $pk);
+							}
+
+							$columns = array_combine($this->fk($field->through), $model->pk());
+
+							foreach ($columns as $fk => $pk)
+							{
+								$query->where($fk, '=', $this->$pk);
+							}
 						}
 					}
 					else
 					{
 						if (isset($value))
 						{
-							$query = DB::select()
-								->where($model->pk(), '=', $value);
+							$query = DB::select();
+
+							foreach ($model->pk() as $pk)
+							{
+								$query->where($pk, '=', $value);
+							}
 						}
 						else
 						{
-							$query = DB::select()
-								->where($this->fk(), '=', $this->{$this->_primary_key});
+							$query = DB::select();
+
+							$columns = array_combine($this->fk(), $this->pk());
+
+							foreach ($columns as $fk => $pk)
+							{
+								$query->where($fk, '=', $this->$pk);
+							}
 						}
 					}
 
@@ -377,11 +394,23 @@ abstract class Sprig {
 				}
 				elseif ($field instanceof Sprig_Field_BelongsTo)
 				{
-					$related = $model->values(array($model->pk() => $value));
+					$values = array();
+					foreach ($this->pk() as $pk)
+					{
+						$values[$pk] = $this->_original[$pk];
+					}
+
+					$related = $model->values($values);
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
-					$related = $model->values(array($this->_model => $this->{$this->_primary_key}));
+					$values = array();
+					foreach ($this->pk() as $pk)
+					{
+						$values[$this->_model] = $this->_original[$pk];
+					}
+
+					$related = $model->values($values);
 				}
 
 				$value = $this->_related[$name] = $related;
@@ -563,6 +592,8 @@ abstract class Sprig {
 	 */
 	public function pk($table = NULL)
 	{
+		$keys = array();
+
 		if ($table)
 		{
 			if ($table === TRUE)
@@ -570,10 +601,15 @@ abstract class Sprig {
 				$table = $this->_table;
 			}
 
-			return $table.'.'.$this->_primary_key;
+			$table .= '.';
 		}
 
-		return $this->_primary_key;
+		foreach ($this->_primary_key as $pk)
+		{
+			$keys[] = $table.$pk;
+		}
+
+		return $keys;
 	}
 
 	/**
@@ -584,7 +620,7 @@ abstract class Sprig {
 	 */
 	public function fk($table = NULL)
 	{
-		$key = $this->_model.'_'.$this->_primary_key;
+		$keys = array();
 
 		if ($table)
 		{
@@ -593,10 +629,15 @@ abstract class Sprig {
 				$table = $this->_table;
 			}
 
-			return $table.'.'.$key;
+			$table .= '.';
 		}
 
-		return $key;
+		foreach ($this->_primary_key as $pk)
+		{
+			$keys[] = $table.$this->_model.'_'.$pk;
+		}
+
+		return $keys;
 	}
 
 	/**
@@ -1066,23 +1107,19 @@ abstract class Sprig {
 			->values($values)
 			->execute($this->_db);
 
-		if (is_array($this->_primary_key))
+		foreach ($this->_primary_key as $pk)
 		{
-			foreach ($this->_primary_key as $name)
+			if ($this->_fields[$pk] instanceof Sprig_Field_Auto)
 			{
-				if ($this->_fields[$name] instanceof Sprig_Field_Auto)
+				if (empty($values[$pk]))
 				{
 					// Set the auto-increment primary key to the insert id
 					$this->$name = $id;
-
-					// There can only be 1 auto-increment column per model
-					break;
 				}
+
+				// There can only be 1 auto-increment column per model
+				break;
 			}
-		}
-		elseif ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
-		{
-			$this->{$this->_primary_key} = $id;
 		}
 
 		// Object is now loaded
@@ -1098,9 +1135,14 @@ abstract class Sprig {
 
 				foreach ($value as $id)
 				{
-					DB::insert($field->through, array($this->fk(), $model->fk()))
-						->values(array($this->{$this->_primary_key}, $id))
-						->execute($this->_db);
+					$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
+
+					foreach ($this->pk() as $pk)
+					{
+						$query->values(array($this->$pk, $id));
+					}
+
+					$query->execute($this->_db);
 				}
 			}
 		}
@@ -1156,16 +1198,9 @@ abstract class Sprig {
 				$query = DB::update($this->_table)
 					->set($values);
 
-				if (is_array($this->_primary_key))
+				foreach($this->_primary_key as $pk)
 				{
-					foreach($this->_primary_key as $field)
-					{
-						$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
-					}
-				}
-				else
-				{
-					$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
+					$query->where($this->_fields[$pk]->column, '=', $this->_original[$field]);
 				}
 
 				$query->execute($this->_db);
@@ -1182,10 +1217,19 @@ abstract class Sprig {
 					// Find old relationships that must be deleted
 					if ($old = array_diff($this->_original[$name], $value))
 					{
-						DB::delete($field->through)
-							->where($this->fk(), '=', $this->{$this->_primary_key})
-							->where($model->fk(), 'IN', $old)
-							->execute($this->_db);
+						$query = DB::delete($field->through);
+
+						foreach ($this->fk() as $pk)
+						{
+							$query->where($pk, '=', $this->$pk);
+						}
+
+						foreach ($model->fk() as $pk)
+						{
+							$query->where($pk, 'IN', $old);
+						}
+
+						$query->execute($this->_db);
 					}
 
 					// Find new relationships that must be inserted
@@ -1193,9 +1237,14 @@ abstract class Sprig {
 					{
 						foreach ($new as $id)
 						{
-							DB::insert($field->through, array($this->fk(), $model->fk()))
-								->values(array($this->{$this->_primary_key}, $id))
-								->execute($this->_db);
+							$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
+
+							foreach ($this->pk() as $pk)
+							{
+								$query->values(array($this->$pk, $id));
+							}
+
+							$query->execute($this->_db);
 						}
 					}
 				}

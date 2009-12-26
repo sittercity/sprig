@@ -23,27 +23,24 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 		}
 		elseif (is_object($value))
 		{
-			$model = Sprig::factory($this->model);
-
 			// Assume this is a Database_Result object
-			$value = $value->as_array(NULL, $model->pk());
+
+			$result = array();
+			foreach ($value as $model)
+			{
+				$row = array();
+				foreach ($model->pk() as $pk)
+				{
+					$row[$pk] = $model->$pk;
+				}
+				$result[] = $row;
+			}
+			$value = $result;
 		}
 		else
 		{
 			// Value must always be an array
 			$value = (array) $value;
-		}
-
-		if ($value)
-		{
-			// Combine the value to make a mirrored array
-			$value = array_combine($value, $value);
-
-			foreach ($value as $id)
-			{
-				// Convert the value to the proper type
-				$value[$id] = parent::value($id);
-			}
 		}
 
 		return $value;
