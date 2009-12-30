@@ -2,89 +2,89 @@
 /**
  * Basic Sprig_Field implementation.
  *
- * @package    Sprig
- * @author     Woody Gilk
+ * @package	   Sprig
+ * @author	   Woody Gilk
  * @copyright  (c) 2009 Woody Gilk
- * @license    MIT
+ * @license	   MIT
  */
 abstract class Sprig_Field {
 
-    /**
-     * @var bool Allow `empty()` values to be used. Default is `FALSE`.
-     */
+	/**
+	 * @var bool Allow `empty()` values to be used. Default is `FALSE`.
+	 */
 	public $empty = FALSE;
 
-    /**
-     * @var bool A primary key field. Multiple primary keys (composite key) can be specified. Default is `FALSE`.
-     */
+	/**
+	 * @var bool A primary key field. Multiple primary keys (composite key) can be specified. Default is `FALSE`.
+	 */
 	public $primary = FALSE;
 
-    /**
-     * @var bool This field must have a unique value within the model table. Default is `FALSE`.
-     */
+	/**
+	 * @var bool This field must have a unique value within the model table. Default is `FALSE`.
+	 */
 	public $unique = FALSE;
 
-    /**
-     * @var bool Convert all `empty()` values to `NULL`. Default is `FALSE`.
-     */
+	/**
+	 * @var bool Convert all `empty()` values to `NULL`. Default is `FALSE`.
+	 */
 	public $null = FALSE;
 
-    /**
-     * @var bool Show the field in forms. Default is `TRUE`.
-     */
+	/**
+	 * @var bool Show the field in forms. Default is `TRUE`.
+	 */
 	public $editable = TRUE;
 
-    /**
-     * @var string Default value for this field. Default is `''` (an empty string).
-     */
+	/**
+	 * @var string Default value for this field. Default is `''` (an empty string).
+	 */
 	public $default = '';
 
-    /**
-     * @var array Limit the value of this field to an array of choices. This will change the form input into a select list. No default value.
-     */
+	/**
+	 * @var array Limit the value of this field to an array of choices. This will change the form input into a select list. No default value.
+	 */
 	public $choices;
 
-    /**
-     * @var string Database column name for this field. Default will be the same as the field name,
-     * except for foreign keys, which will use the field name with `_id` appended.
-     * In the case of HasMany fields, this value is the column name that contains the
-     * foreign key value.
-     */
+	/**
+	 * @var string Database column name for this field. Default will be the same as the field name,
+	 * except for foreign keys, which will use the field name with `_id` appended.
+	 * In the case of HasMany fields, this value is the column name that contains the
+	 * foreign key value.
+	 */
 	public $column;
 
-    /**
-     * @var string Human readable label. Default will be the field name converted with `Inflector::humanize()`.
-     */
+	/**
+	 * @var string Human readable label. Default will be the field name converted with `Inflector::humanize()`.
+	 */
 	public $label;
 
-    /**
-     * @var string Description of the field. Default is `''` (an empty string).
-     */
+	/**
+	 * @var string Description of the field. Default is `''` (an empty string).
+	 */
 	public $description = '';
 
 	 /**
-     * @var array {@link Kohana_HTML} html attribute for the field.
-     */
+	 * @var array {@link Kohana_HTML} html attribute for the field.
+	 */
 	public $attributes = array();
 
-    /**
-     * @var bool The column is present in the database table. Default: TRUE
-     */
+	/**
+	 * @var bool The column is present in the database table. Default: TRUE
+	 */
 	public $in_db = TRUE;
 
-    /**
-     * @var array {@link Kohana_Validate} filters for this field.
-     */
+	/**
+	 * @var array {@link Kohana_Validate} filters for this field.
+	 */
 	public $filters = array();
 
-    /**
-     * @var array {@link Kohana_Validate} rules for this field.
-     */
+	/**
+	 * @var array {@link Kohana_Validate} rules for this field.
+	 */
 	public $rules = array();
 
-    /**
-     * @var array {@link Kohana_Validate} callbacks for this field.
-     */
+	/**
+	 * @var array {@link Kohana_Validate} callbacks for this field.
+	 */
 	public $callbacks = array();
 
 	public function __construct(array $options = NULL)
