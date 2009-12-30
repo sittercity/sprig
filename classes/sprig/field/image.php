@@ -40,7 +40,7 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 		parent::__construct($options);
 
 		// Make sure the path has a trailing slash
-		$this->path = rtrim(str_replace('\\', '/', $this->path), '/').'/';
+		$this->path = rtrim($options['path'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
 	}
 
 	public function input($name, $value, array $attr = NULL)
