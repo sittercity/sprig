@@ -17,7 +17,12 @@ class Sprig_Field_Integer extends Sprig_Field {
 	{
 		$value = parent::value($value);
 
-		if ($value !== NULL)
+		if ($value === '' OR $value === NULL)
+		{
+			// Empty strings are not a valid timestamp
+			$value = NULL;
+		}
+		else
 		{
 			$value = (int) $value;
 		}
