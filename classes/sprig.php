@@ -21,17 +21,8 @@ abstract class Sprig {
 	 */
 	public static function factory($name, array $values = NULL)
 	{
-		static $models;
-
-		if ( ! isset($models[$name]))
-		{
-			$class = 'Model_'.$name;
-
-			$models[$name] = new $class;
-		}
-
-		// Create a new instance of the model by clone
-		$model = clone $models[$name];
+		$model = 'Model_'.$name;
+		$model = new $model;
 
 		if ($values)
 		{
