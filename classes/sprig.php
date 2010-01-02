@@ -845,14 +845,16 @@ abstract class Sprig {
 	 * @param   array   input attributes
 	 * @return  string
 	 */
-	public function input($field, array $attr = NULL)
+	public function input($name, array $attr = NULL)
 	{
+		$field = $this->_fields[$name];
+
 		if ($attr === NULL)
 		{
 			$attr = $field->attributes;
 		}
 
-		return $this->_fields[$field]->input($field, $this->$field, $attr);
+		return $field->input($name, $this->$name, $attr);
 	}
 
 	/**
