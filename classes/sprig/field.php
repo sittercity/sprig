@@ -63,9 +63,9 @@ abstract class Sprig_Field {
 	public $description = '';
 
 	 /**
-	 * @var array {@link Kohana_HTML} html attribute for the field.
+	 * @var array {@link HTML} html attribute for the field.
 	 */
-	public $attributes = array();
+	public $attributes = NULL;
 
 	/**
 	 * @var bool The column is present in the database table. Default: TRUE
@@ -73,17 +73,17 @@ abstract class Sprig_Field {
 	public $in_db = TRUE;
 
 	/**
-	 * @var array {@link Kohana_Validate} filters for this field.
+	 * @var array {@link Validate} filters for this field.
 	 */
 	public $filters = array();
 
 	/**
-	 * @var array {@link Kohana_Validate} rules for this field.
+	 * @var array {@link Validate} rules for this field.
 	 */
 	public $rules = array();
 
 	/**
-	 * @var array {@link Kohana_Validate} callbacks for this field.
+	 * @var array {@link Validate} callbacks for this field.
 	 */
 	public $callbacks = array();
 
