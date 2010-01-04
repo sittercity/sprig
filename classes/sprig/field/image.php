@@ -21,9 +21,9 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 	public $height;
 
 	/**
-	 * @var  string  path where the image will be saved to/ loaded from
+	 * @var  string  directory where the image will be loaded from
 	 */
-	public $path;
+	public $directory;
 
 	/**
 	 * @var  integer  one of the Image resize constants
@@ -32,32 +32,25 @@ class Sprig_Field_Image extends Sprig_Field_Char {
 
 	public function __construct(array $options = NULL)
 	{
-		if (empty($options['path']) OR ! is_dir($options['path']))
+		if (empty($options['directory']) OR ! is_dir($options['directory']))
 		{
-			throw new Sprig_Exception('Image fields must have a directory path to save and load images from');
+			throw new Sprig_Exception('Image fields must define a directory path');
 		}
 
-		parent::__construct($options);
+		// Normalize the directory path
+		$options['directory'] = rtrim(str_replace(array('\\', '/'), '/', $options['directory']), '/').'/';
 
-		// Make sure the path has a trailing slash
-		$this->path = rtrim($options['path'], DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+		parent::__construct($options);
 	}
 
 	public function input($name, $value, array $attr = NULL)
 	{
-		$input = Form::file($name, $attr);
-
-		if ($value)
-		{
-			$input .= HTML::image($this->verbose($value));
-		}
-
-		return $input;
+		return Form::file($name, $attr);
 	}
 
 	public function verbose($value)
 	{
-		return $this->path.$value;
+		return $this->directory.$value;
 	}
 
 } // End Sprig_Field_Image
