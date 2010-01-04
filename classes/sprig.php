@@ -1379,12 +1379,6 @@ abstract class Sprig {
 					if ($file = Upload::save($array[$name], $filename, $field->directory))
 					{
 						$array[$name] = $this->$name = $file;
-
-						if ($field instanceof Sprig_Field_Image)
-						{
-							// Resize the image now
-							$field->resize($file);
-						}
 					}
 					else
 					{

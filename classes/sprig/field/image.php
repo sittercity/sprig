@@ -4,6 +4,7 @@
  *
  * @package    Sprig
  * @author     Woody Gilk
+ * @author     Kelvin Luck
  * @copyright  (c) 2009 Woody Gilk
  * @license    MIT
  */
@@ -20,26 +21,8 @@ class Sprig_Field_Image extends Sprig_Field_Upload {
 	public $height;
 
 	/**
-	 * @var  integer  one of the Image resize constants: Image::AUTO, Image::NONE, etc
+	 * @var  integer  one of the Image resize constants
 	 */
-	public $resize;
-
-	/**
-	 * Resize the given image to the proper width and height.
-	 *
-	 * Automatically called by Sprig::_upload_file().
-	 *
-	 * @param   string   image file path
-	 * @return  void
-	 */
-	public function resize($value)
-	{
-		if ($this->resize AND ($this->width OR $this->height))
-		{
-			Image::factory($value)
-				->resize($this->width, $this->height, $this->resize)
-				->save();
-		}
-	}
+	public $resize = Image::AUTO;
 
 } // End Sprig_Field_Image
