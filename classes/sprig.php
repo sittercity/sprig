@@ -252,11 +252,6 @@ abstract class Sprig {
 				{
 					$field->rules['max_length'] = array($field->max_length);
 				}
-
-				if ($field instanceof Sprig_Field_Upload)
-				{
-					$field->callbacks[] = array($this, '_upload_file');
-				}
 			}
 
 			if ($field instanceof Sprig_Field_BelongsTo OR ! $field instanceof Sprig_Field_ForeignKey)
@@ -1331,71 +1326,6 @@ abstract class Sprig {
 			if (count($query))
 			{
 				$array->error($field, 'unique');
-			}
-		}
-	}
-
-	/**
-	 * Callback for validating file uploads.
-	 *
-	 * @param   object  Validate array
-	 * @param   string  field name
-	 * @return  void
-	 */
-	public function _upload_file(Validate $array, $name)
-	{
-		if ($array->errors())
-		{
-			// Attempting an upload when errors exist would be useless
-			return;
-		}
-
-		$field = $this->_fields[$name];
-
-		if (is_array($array[$name]))
-		{
-			// Handle a file upload via a form
-
-			if (Upload::not_empty($array[$name]))
-			{
-				if ($field->types AND ! Upload::type($array[$name], $field->types))
-				{
-					$array->error($name, 'Upload::type', $field->types);
-				}
-				elseif ($field->size AND ! Upload::size($array[$name], $field->size))
-				{
-					$array->error($name, 'Upload::size', $field->size);
-				}
-				else
-				{
-					$filename = NULL;
-
-					if ($field->field_name)
-					{
-						$filename = $field->field_name;
-						$filename = $this->$filename.'.'.strtolower(pathinfo($array[$name]['name'], PATHINFO_EXTENSION));
-					}
-
-					if ($file = Upload::save($array[$name], $filename, $field->directory))
-					{
-						$array[$name] = $this->$name = $file;
-					}
-					else
-					{
-						$array->error($name, 'Upload::save');
-					}
-				}
-			}
-			else
-			{
-				if ( ! $field->empty)
-				{
-					// File cannot be empty
-					$array->error($name, 'Upload::not_empty');
-				}
-
-				// Clear the empty upload value
-				$array[$name] = $this->$name = $this->_original[$name];
 			}
 		}
 	}
