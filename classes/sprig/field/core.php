@@ -7,7 +7,7 @@
  * @copyright  (c) 2009 Woody Gilk
  * @license	   MIT
  */
-abstract class Sprig_Field {
+abstract class Sprig_Field_Core {
 
 	/**
 	 * @var bool Allow `empty()` values to be used. Default is `FALSE`.

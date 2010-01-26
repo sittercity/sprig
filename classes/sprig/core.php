@@ -7,7 +7,7 @@
  * @copyright  (c) 2009 Woody Gilk
  * @license    MIT
  */
-abstract class Sprig {
+abstract class Sprig_Core {
 
 	// Model many-to-many relations
 	protected static $_relations;
