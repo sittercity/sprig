@@ -212,6 +212,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('Mr', $user->title);
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
 		
+		$user->name->load();
 		$this->assertEquals('one', $user->name->name);
 		$this->assertEquals(1, $user->name->test_user_id);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
@@ -232,6 +233,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('one', $name->name);
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
 		
+		$name->user->load();
 		$this->assertEquals(1, $name->user->id);
 		$this->assertEquals('Mr', $name->user->title);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
@@ -271,8 +273,11 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 	}
 	
-	
-	public function testManyManyLazy()
+	/**
+	 * Load a number of items via a many-many link, then test retrieving their related items.
+	 * 
+	 */
+	public function testRelatedViaManyMany()
 	{
 		$q_before = $this->getQueries();
 
@@ -282,17 +287,24 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 
 		$this->assertEquals(2, count($tag->users));
 
-		$user0 = $tag->users[0];
-		$user1 = $tag->users[1];
+		// we expect 2 results, but don't know which order they'll be in
+		$user0 = $tag->users[0]->id == 1 ? $tag->users[0] : $tag->users[1];
+		$user1 = $tag->users[1]->id == 2 ? $tag->users[1] : $tag->users[0];
 
 		$this->assertEquals(1, $user0->id);
 		$this->assertEquals(2, $user1->id);
 		$this->assertEquals('Mr' , $user0->title);
 		$this->assertEquals('Mrs', $user1->title);
 		
+		// intersperse the checks so we can be sure where the queries happen.
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
+		$user0->name->load();
+		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 		$this->assertEquals('one', $user0->name->name);
-		$this->assertEquals('two', $user1->name->name);
+		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
+		$this->assertEquals('one', $user0->name->name);
+		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
+		$user1->name->load();
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 		$this->assertEquals('two', $user1->name->name);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
