@@ -139,5 +139,15 @@ abstract class Sprig_Field_Core {
 	{
 		return Form::label($name, UTF8::ucwords($this->label), $attr);
 	}
+	
+	public function _database_wrap($value)
+	{
+		return $value;
+	}
+	
+	public function _database_unwrap($value)
+	{
+		return $value;
+	}
 
 } // End Sprig_Field

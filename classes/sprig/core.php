@@ -334,8 +334,12 @@ abstract class Sprig_Core {
 							}
 							else
 							{
+								// TODO this needs testing
+								$wrapped = array_map(
+									array($model->field($model->pk()),'_database_wrap'),
+									$value);
 								$query = DB::select()
-									->where($model->pk(), 'IN', $value);
+									->where($model->pk(), 'IN', $wrapped);
 							}
 						}
 						else
@@ -343,7 +347,10 @@ abstract class Sprig_Core {
 							$query = DB::select()
 								->join($field->through)
 									->on($model->fk($field->through), '=', $model->pk(TRUE))
-								->where($this->fk($field->through), '=', $this->{$this->_primary_key});
+								->where(
+									$this->fk($field->through),
+									'=',
+									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 						}
 					}
 					else
@@ -351,12 +358,18 @@ abstract class Sprig_Core {
 						if (isset($value))
 						{
 							$query = DB::select()
-								->where($model->pk(), '=', $value);
+								->where(
+									$model->pk(),
+									'=',
+									$field->_database_wrap($value));
 						}
 						else
 						{
 							$query = DB::select()
-								->where($this->fk(), '=', $this->{$this->_primary_key});
+								->where(
+									$this->fk(),
+									'=',
+									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 						}
 					}
 
@@ -427,9 +440,16 @@ abstract class Sprig_Core {
 			{
 				$model = Sprig::factory($field->model);
 
-				$result = DB::select($model->fk())
+				$result = DB::select(
+						array(
+							$model->field($model->pk())->_database_unwrap($model->fk()),
+							$model->fk())
+						)
 					->from($field->through)
-					->where($this->fk(), '=', $this->{$this->_primary_key})
+					->where(
+						$this->fk(),
+						'=',
+						$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
 					->execute($this->_db);
 
 				// The original value for the relationship must be defined
@@ -930,7 +950,10 @@ abstract class Sprig_Core {
 					continue;
 				}
 
-				$query->where("{$table}.{$field->column}", '=', $value);
+				$query->where(
+					"{$table}.{$field->column}",
+					'=',
+					$field->_database_wrap($value));
 			}
 		}
 
@@ -969,18 +992,14 @@ abstract class Sprig_Core {
 				continue;
 			}
 
-			if ($name === $field->column)
-			{
-				$query->select("{$table}.{$name}");
-			}
-			else
-			{
-				$query->select(array("{$table}.{$field->column}", $name));
-			}
+			$query->select(array($field->_database_unwrap("{$table}.{$field->column}"), $name));
 
 			if (array_key_exists($name, $changed))
 			{
-				$query->where("{$table}.{$field->column}", '=', $changed[$name]);
+				$query->where(
+					"{$table}.{$field->column}",
+					'=',
+					$field->_database_wrap($changed[$name]));
 			}
 		}
 
@@ -1055,7 +1074,7 @@ abstract class Sprig_Core {
 			}
 
 			// Change the field name to the column name
-			$values[$field->column] = $value;
+			$values[$field->column] = $field->_database_wrap($value);
 		}
 
 		list($id) = DB::insert($this->_table, array_keys($values))
@@ -1095,7 +1114,11 @@ abstract class Sprig_Core {
 				foreach ($value as $id)
 				{
 					DB::insert($field->through, array($this->fk(), $model->fk()))
-						->values(array($this->{$this->_primary_key}, $id))
+						->values(
+							array(
+								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
+								$model->field($model->fk())->_database_wrap($id))
+							)
 						->execute($this->_db);
 				}
 			}
@@ -1144,7 +1167,7 @@ abstract class Sprig_Core {
 				}
 
 				// Change the field name to the column name
-				$values[$field->column] = $value;
+				$values[$field->column] = $field->_database_wrap($value);
 			}
 
 			if ($values)
@@ -1156,12 +1179,18 @@ abstract class Sprig_Core {
 				{
 					foreach($this->_primary_key as $field)
 					{
-						$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
+						$query->where(
+							$this->_fields[$field]->column,
+							'=',
+							$this->_fields[$field]->_database_wrap($this->_original[$field]));
 					}
 				}
 				else
 				{
-					$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
+					$query->where(
+						$this->_fields[$this->_primary_key]->column,
+						'=',
+						$this->_fields[$this->_primary_key]->_database_wrap($this->_original[$this->_primary_key]));
 				}
 
 				$query->execute($this->_db);
@@ -1178,8 +1207,14 @@ abstract class Sprig_Core {
 					// Find old relationships that must be deleted
 					if ($old = array_diff($this->_original[$name], $value))
 					{
+						// TODO this needs testing
+						$old = array_map(array($this->_fields[$this->_primary_key],'_database_wrap'), $old);
+						
 						DB::delete($field->through)
-							->where($this->fk(), '=', $this->{$this->_primary_key})
+							->where(
+								$this->fk(),
+								'=',
+								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
 							->where($model->fk(), 'IN', $old)
 							->execute($this->_db);
 					}
@@ -1190,7 +1225,11 @@ abstract class Sprig_Core {
 						foreach ($new as $id)
 						{
 							DB::insert($field->through, array($this->fk(), $model->fk()))
-								->values(array($this->{$this->_primary_key}, $id))
+								->values(
+									array(
+										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
+										$model->field($model->fk())->_database_wrap($id)
+									))
 								->execute($this->_db);
 						}
 					}
@@ -1232,7 +1271,10 @@ abstract class Sprig_Core {
 		{
 			foreach ($changed as $field => $value)
 			{
-				$query->where($this->_fields[$field]->column, '=', $value);
+				$query->where(
+					$this->_fields[$field]->column,
+					'=',
+					$this->_fields[$field]->_database_wrap($value));
 			}
 		}
 		else
@@ -1241,12 +1283,18 @@ abstract class Sprig_Core {
 			{
 				foreach($this->_primary_key as $field)
 				{
-					$query->where($this->_fields[$field]->column, '=', $this->_original[$field]);
+					$query->where(
+						$this->_fields[$field]->column,
+						'=',
+						$this->_fields[$field]->_database_wrap($this->_original[$field]));
 				}
 			}
 			else
 			{
-				$query->where($this->_fields[$this->_primary_key]->column, '=', $this->_original[$this->_primary_key]);
+				$query->where(
+					$this->_fields[$this->_primary_key]->column,
+					'=',
+					$this->_fields[$this->_primary_key]->_database_wrap($this->_original[$this->_primary_key]));
 			}
 		}
 
@@ -1323,7 +1371,10 @@ abstract class Sprig_Core {
 		{
 			$query = DB::select($this->_fields[$this->_primary_key]->column)
 				->from($this->_table)
-				->where($this->_fields[$field]->column, '=', $array[$field])
+				->where(
+					$this->_fields[$field]->column,
+					'=',
+					$this->_fields[$field]->_database_wrap($array[$field]))
 				->execute($this->_db);
 
 			if (count($query))
