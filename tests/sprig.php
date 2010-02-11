@@ -28,8 +28,8 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 				`id` INT PRIMARY KEY AUTO_INCREMENT,
 				`title` VARCHAR(20),
 				`year` INT,
-				`joined` TIMESTAMP,
-				`last_online` TIMESTAMP
+				`joined` INT,
+				`last_online` INT
 			)',
 			'CREATE TABLE `test_names` (
 				`test_user_id` INT PRIMARY KEY AUTO_INCREMENT,
