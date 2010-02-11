@@ -81,7 +81,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	}
 	
 	/**
-	 * Test __get and __set
+	 * Test __get and __set to ensure you can set a field back to it's default value
 	 * @ticket 52
 	 */
 	public function testSetDefault()
@@ -128,7 +128,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$user = Sprig::factory('Test_User');
 		$user->id = 1;
 		$this->assertEquals('Sir', $user->title);
-		$this->assertEquals(0, $user->year);
+		$this->assertEquals(null, $user->year);
 		
 		$this->assertQueryCountIncrease(0, $q_before, $this->getQueries());
 	}
