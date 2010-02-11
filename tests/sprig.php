@@ -29,7 +29,8 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 				`title` VARCHAR(20),
 				`year` INT,
 				`joined` INT,
-				`last_online` INT
+				`last_online` INT,
+				`last_breathed` TIMESTAMP
 			)',
 			'CREATE TABLE `test_names` (
 				`test_user_id` INT PRIMARY KEY AUTO_INCREMENT,
@@ -45,9 +46,9 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 			)',
 			
 			"INSERT INTO `test_users` VALUES
-				(1, 'Mr' , 1991, FROM_UNIXTIME(1), FROM_UNIXTIME(10)),
-				(2, 'Mrs', 1992, FROM_UNIXTIME(3), FROM_UNIXTIME(12)),
-				(3, 'Dr' , 1993, FROM_UNIXTIME(5), FROM_UNIXTIME(15))",
+				(1, 'Mr' , 1991, 1, 10, FROM_UNIXTIME(10)),
+				(2, 'Mrs', 1992, 3, 12, FROM_UNIXTIME(12)),
+				(3, 'Dr' , 1993, 5, 15, FROM_UNIXTIME(15))",
 			"INSERT INTO `test_names` VALUES (1, 'one'), (2, 'two'), (3, 'three')",
 			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi')",
 			'INSERT INTO `test_tags_test_users` VALUES (1,1), (2,2), (3,3), (1,2), (1,3), (2,1), (2,3)',
@@ -396,6 +397,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$user->title = 'Bacon';
 		$user->year  = 1999;
 		$user->last_online = 99;
+		$user->last_breathed = 101;
 		$user->create();
 
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
@@ -421,6 +423,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$user->title = 'Bacon';
 		$user->year  = 1999;
 		$user->last_online = 99;
+		$user->last_breathed = 101;
 		$user->create();
 
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
@@ -431,8 +434,10 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		
 		$user2->title = 'Madam';
 		$this->assertEquals($user->last_online,$user2->last_online);
+		$this->assertEquals($user->last_breathed,$user2->last_breathed);
 		$user2->update();
 		$this->assertGreaterThan($user->last_online, $user2->last_online);
+		$this->assertGreaterThan($user->last_breathed, $user2->last_breathed);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 		
 		$user3 = Sprig::factory('Test_User', array('id'=>$user->id))->load();

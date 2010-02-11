@@ -12,6 +12,7 @@ class Model_Test_User extends Sprig {
 			'title'       => new Sprig_Field_Char(array('max_length' => 20, 'default' => 'Sir')),
 			'joined'      => new Sprig_Field_Timestamp(array('auto_now_create' => TRUE)),
 			'last_online' => new Sprig_Field_Timestamp(array('auto_now_update' => TRUE)),
+			'last_breathed' => new Sprig_Field_NativeTimestamp(array('auto_now_update' => TRUE)),
 		);
 	}
 }
