@@ -144,6 +144,9 @@ abstract class Sprig_Core {
 
 		foreach ($this->_fields as $name => $field)
 		{
+			// Assign this model to the field
+			$field->object = $this;
+
 			if ($field instanceof Sprig_Field_ForeignKey AND ! $field->model)
 			{
 				if ($field instanceof Sprig_Field_HasMany)

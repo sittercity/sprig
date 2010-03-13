@@ -87,6 +87,11 @@ abstract class Sprig_Field_Core {
 	 */
 	public $callbacks = array();
 
+	/**
+	 * @var  object  {@link Sprig} model parent
+	 */
+	public $object;
+
 	public function __construct(array $options = NULL)
 	{
 		if ( ! empty($options))
