@@ -199,7 +199,16 @@ abstract class Sprig_Core {
 
 				if ($field instanceof Sprig_Field_BelongsTo)
 				{
-					$field->column = Sprig::factory($field->model)->fk();
+					if ( isset($field->foreign_key) AND $field->foreign_key)
+					{
+						$fk = $field->foreign_key;
+					}
+					else
+					{
+						$fk = Sprig::factory($field->model)->fk();
+					}
+
+					$field->column = $fk;
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
@@ -344,11 +353,24 @@ abstract class Sprig_Core {
 						}
 						else
 						{
+							// We can grab the PK from the field definition.
+							// If it doesn't exist, revert to the model choice
+							if ( isset($field->foreign_key) AND $field->foreign_key)
+							{
+								$fk = $field->through.'.'.$field->foreign_key;
+								$fk2 = $field->through.'.'.$model->pk();
+							}
+							else
+							{
+								$fk = $this->fk($field->through);
+								$fk2 = $model->fk($field->through);
+							}
+
 							$query = DB::select()
 								->join($field->through)
-									->on($model->fk($field->through), '=', $model->pk(TRUE))
+									->on($fk2, '=', $model->pk(TRUE))
 								->where(
-									$this->fk($field->through),
+									$fk,
 									'=',
 									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 						}
@@ -365,9 +387,18 @@ abstract class Sprig_Core {
 						}
 						else
 						{
+							if ( isset($field->foreign_key) AND $field->foreign_key)
+							{
+								$fk = $field->foreign_key;
+							}
+							else
+							{
+								$fk = $model->fk();
+							}
+
 							$query = DB::select()
 								->where(
-									$this->fk(),
+									$fk,
 									'=',
 									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 						}
@@ -384,7 +415,12 @@ abstract class Sprig_Core {
 				}
 				elseif ($field instanceof Sprig_Field_BelongsTo)
 				{
-					$related = $model->values(array($model->pk() => $value));
+					if ( isset($field->primary_key) AND $field->primary_key)
+						$pk = $field->primary_key;
+					else
+						$pk = $model->pk();
+
+					$related = $model->values(array($pk => $value));
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
@@ -440,14 +476,23 @@ abstract class Sprig_Core {
 			{
 				$model = Sprig::factory($field->model);
 
+				if ( isset($field->foreign_key) AND $field->foreign_key)
+				{
+					$fk = $field->foreign_key;
+				}
+				else
+				{
+					$fk = $model->fk();
+				}
+
 				$result = DB::select(
 						array(
-							$model->field($model->pk())->_database_unwrap($model->fk()),
+							$model->field($model->pk())->_database_unwrap($fk),
 							$model->fk())
 						)
 					->from($field->through)
 					->where(
-						$this->fk(),
+						$fk,
 						'=',
 						$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
 					->execute($this->_db);
@@ -1143,15 +1188,24 @@ abstract class Sprig_Core {
 			{
 				$field = $this->_fields[$name];
 
+				if ( isset($field->foreign_key) AND $field->foreign_key)
+				{
+					$fk = $field->foreign_key;
+				}
+				else
+				{
+					$fk = $this->fk($field->through);
+				}
+
 				$model = Sprig::factory($field->model);
 
 				foreach ($value as $id)
 				{
-					DB::insert($field->through, array($this->fk(), $model->fk()))
+					DB::insert($field->through, array($fk, $model->fk()))
 						->values(
 							array(
 								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
-								$model->field($model->fk())->_database_wrap($id))
+								$model->field($model->pk())->_database_wrap($id))
 							)
 						->execute($this->_db);
 				}
@@ -1243,10 +1297,19 @@ abstract class Sprig_Core {
 					{
 						// TODO this needs testing
 						$old = array_map(array($this->_fields[$this->_primary_key],'_database_wrap'), $old);
-						
+
+						if ( isset($field->foreign_key) AND $field->foreign_key)
+						{
+							$fk = $field->foreign_key;
+						}
+						else
+						{
+							$fk = $this->fk();
+						}
+
 						DB::delete($field->through)
 							->where(
-								$this->fk(),
+								$fk,
 								'=',
 								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
 							->where($model->fk(), 'IN', $old)
@@ -1256,13 +1319,22 @@ abstract class Sprig_Core {
 					// Find new relationships that must be inserted
 					if ($new = array_diff($value, $this->_original[$name]))
 					{
+						if ( isset($field->foreign_key) AND $field->foreign_key)
+						{
+							$fk = $field->foreign_key;
+						}
+						else
+						{
+							$fk = $this->fk($field->through);
+						}
+
 						foreach ($new as $id)
 						{
-							DB::insert($field->through, array($this->fk(), $model->fk()))
+							DB::insert($field->through, array($fk, $model->fk()))
 								->values(
 									array(
 										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
-										$model->field($model->fk())->_database_wrap($id)
+										$model->field($model->pk())->_database_wrap($id)
 									))
 								->execute($this->_db);
 						}

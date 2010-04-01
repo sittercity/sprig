@@ -15,6 +15,10 @@ abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 
 	public $model;
 
+	public $foreign_key = NULL;
+
+	public $primary_key = NULL;
+
 	public function value($value)
 	{
 		if (is_object($value))
