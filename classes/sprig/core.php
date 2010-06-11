@@ -8,10 +8,6 @@
  * @license    MIT
  */
 abstract class Sprig_Core {
-
-	// Model many-to-many relations
-	protected static $_relations;
-
 	/**
 	 * Load an empty sprig model.
 	 *
@@ -144,127 +140,7 @@ abstract class Sprig_Core {
 
 		foreach ($this->_fields as $name => $field)
 		{
-			// Assign this model to the field
-			$field->object = $this;
-
-			if ($field instanceof Sprig_Field_ForeignKey AND ! $field->model)
-			{
-				if ($field instanceof Sprig_Field_HasMany)
-				{
-					$field->model = Inflector::singular($name);
-				}
-				else
-				{
-					$field->model = $name;
-				}
-			}
-
-			if ($field instanceof Sprig_Field_ManyToMany)
-			{
-				if ( ! $field->through)
-				{
-					// Get the model names for the relation pair
-					$pair = array(strtolower($this->_model), strtolower($field->model));
-
-					// Sort the model names alphabetically
-					sort($pair);
-
-					// Join the model names to get the relation name
-					$pair = implode('_', $pair);
-
-					if ( ! isset(Sprig::$_relations[$pair]))
-					{
-						// Must set the pair key before loading the related model
-						// or we will fall into an infinite recursion loop
-						Sprig::$_relations[$pair] = TRUE;
-
-						$tables = array($this->table(), Sprig::factory($field->model)->table());
-
-						// Sort the table names alphabetically
-						sort($tables);
-
-						// Join the table names to get the table name
-						Sprig::$_relations[$pair] = implode('_', $tables);
-					}
-
-					// Assign by reference so that changes to the pivot table
-					// will carry over to all models
-					$field->through =& Sprig::$_relations[$pair];
-				}
-			}
-
-			if ( ! $field->column)
-			{
-				// Create the key based on the field name
-
-				if ($field instanceof Sprig_Field_BelongsTo)
-				{
-					if ( isset($field->foreign_key) AND $field->foreign_key)
-					{
-						$fk = $field->foreign_key;
-					}
-					else
-					{
-						$fk = Sprig::factory($field->model)->fk();
-					}
-
-					$field->column = $fk;
-				}
-				elseif ($field instanceof Sprig_Field_HasOne)
-				{
-					$field->column = $this->fk();
-				}
-				elseif ($field instanceof Sprig_Field_ForeignKey)
-				{
-					// This field is probably a Many and does not need a column
-				}
-				else
-				{
-					$field->column = $name;
-				}
-			}
-
-			if ( ! $field->label)
-			{
-				$field->label = Inflector::humanize($name);
-			}
-
-			if ($field->null)
-			{
-				// Fields that allow NULL values must accept empty values
-				$field->empty = TRUE;
-			}
-
-			if ($field->editable)
-			{
-				if ( ! $field->empty AND ! isset($field->rules['not_empty']))
-				{
-					// This field must not be empty
-					$field->rules['not_empty'] = NULL;
-				}
-
-				if ($field->unique)
-				{
-					// Field must be a unique value
-					$field->callbacks[] = array($this, '_unique_field');
-				}
-
-				if ($field->choices AND ! isset($field->rules['in_array']))
-				{
-					// Field must be one of the available choices
-					$field->rules['in_array'] = array(array_keys($field->choices));
-				}
-
-				if ( ! empty($field->min_length))
-				{
-					$field->rules['min_length'] = array($field->min_length);
-				}
-
-				if ( ! empty($field->max_length))
-				{
-					$field->rules['max_length'] = array($field->max_length);
-				}
-			}
+			$field->init($this, $name);
 
 			if ($field instanceof Sprig_Field_BelongsTo OR ! $field instanceof Sprig_Field_ForeignKey)
 			{
@@ -272,6 +148,16 @@ abstract class Sprig_Core {
 				$this->_original[$name] = $field->value($field->default);
 			}
 		}
+	}
+
+	/**
+	 * Returns the model name.
+	 *
+	 * @return string
+	 */
+	public function model()
+	{
+		return $this->_model;
 	}
 
 	/**
@@ -1492,7 +1378,7 @@ abstract class Sprig_Core {
 
 	/**
 	 * Initialize the fields. This method will only be called once
-	 * by Sprig::init(). All models must define this method!
+	 * by Sprig. All models must define this method!
 	 *
 	 * @return  void
 	 */

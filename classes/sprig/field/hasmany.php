@@ -76,4 +76,22 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 		return Form::hidden($name, '').implode('<br/>', $inputs);
 	}
 
+	/**
+	 * Get and optionally set the public $this->model property, based on
+	 * $field_name.  Provided as a method, so that the behavior can be
+	 * easily overridden.
+	 *
+	 * @param string $field_name
+	 *
+	 * @return string
+	 */
+	protected function model($field_name = null)
+	{
+		if (null !== $field_name)
+		{
+			$this->model = Inflector::singular($field_name);
+		}
+		return $this->model;
+	}
+
 } // End Sprig_Field_ManyToMany

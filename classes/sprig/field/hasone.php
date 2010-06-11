@@ -20,4 +20,22 @@ class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 		return Form::select($name, $choices, $this->verbose($value));
 	}
 
+	/**
+	 * Get and optionally set the public $this->column property, based on
+	 * $field_name.  Provided as a method, so that the behavior can be
+	 * easily overridden.
+	 *
+	 * @param string $field_name
+	 *
+	 * @return string
+	 */
+	protected function column($field_name = null)
+	{
+		if (null !== $field_name)
+		{
+			$this->column = $this->object->fk();
+		}
+		return $this->column;
+	}
+
 } // End Sprig_Field_HasOne

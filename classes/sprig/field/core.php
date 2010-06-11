@@ -92,6 +92,9 @@ abstract class Sprig_Field_Core {
 	 */
 	public $object;
 
+	// Initialization status
+	protected $_init = FALSE;
+
 	public function __construct(array $options = NULL)
 	{
 		if ( ! empty($options))
@@ -102,6 +105,51 @@ abstract class Sprig_Field_Core {
 			{
 				$this->$key = $value;
 			}
+		}
+	}
+
+	/**
+	 * Initialize the Sprig Field. This method will only be called once by
+	 * Sprig.
+	 *
+	 * @param Sprig  $object     The parent object which contains $this Field
+	 * @param string $field_name The name of $this Field on the parent object
+	 *
+	 * @return null
+	 */
+	public function init(Sprig $object, $field_name)
+	{
+		if ($this->_init)
+		{
+			throw new Sprig_Exception(
+				':field has already been initialized, and cannot be shared.',
+				array(':field' => $field_name)
+			);
+		}
+
+		// Initialization has been started
+		$this->_init = TRUE;
+
+		$this->object = $object;
+
+		if ( ! $this->column )
+		{
+			// Initialize the $this->column property
+			// Create the key based on the field name
+			$this->column($field_name);
+		}
+
+		$this->label = Inflector::humanize($field_name);
+
+		if ($this->null)
+		{
+			// Fields that allow NULL values must accept empty values
+			$this->empty = TRUE;
+		}
+
+		if ($this->editable)
+		{
+			$this->editable_defaults();
 		}
 	}
 
@@ -148,6 +196,55 @@ abstract class Sprig_Field_Core {
 	public function _database_unwrap($value)
 	{
 		return $value;
+	}
+
+	/**
+	 * Get and optionally set the public $this->column property, based on
+	 * $field_name.  Provided as a method, so that the behavior can be
+	 * easily overridden.
+	 *
+	 * @param string $field_name
+	 *
+	 * @return string
+	 */
+	protected function column($field_name = null)
+	{
+		if (null !== $field_name)
+		{
+			$this->column = $field_name;
+		}
+		return $this->column;
+	}
+
+	protected function editable_defaults()
+	{
+		if ( ! $this->empty AND ! isset($this->rules['not_empty']) )
+		{
+			// This field must not be empty
+			$this->rules['not_empty'] = NULL;
+		}
+
+		if ($this->unique)
+		{
+			// Field must be a unique value
+			$this->callbacks[] = array($this->object, '_unique_field');
+		}
+
+		if ($this->choices AND ! isset($this->rules['in_array']))
+		{
+			// Field must be one of the available choices
+			$this->rules['in_array'] = array(array_keys($this->choices));
+		}
+
+		if ( ! empty($this->min_length) )
+		{
+			$this->rules['min_length'] = array($this->min_length);
+		}
+
+		if ( ! empty($this->max_length) )
+		{
+			$this->rules['max_length'] = array($this->max_length);
+		}
 	}
 
 } // End Sprig_Field
