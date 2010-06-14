@@ -20,6 +20,20 @@ abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 	public $primary_key = NULL;
 
 	/**
+	 * Get the scalar default value of this Field, if applicable
+	 *
+	 * @return mixed|Sprig_Void Returns a Sprig_Void instance if a default value
+	 *                          is not applicable to this Field.
+	 *                          Otherwise, returns the default value.
+	 */
+	public function default_value()
+	{
+		// For most ForeignKey Fields, let's assume that the parent $object does
+		// not possess a default value of the Field - return Void
+		return new Sprig_Void;
+	}
+
+	/**
 	 * Initialize the Sprig Field. This method will only be called once by
 	 * Sprig.
 	 *

@@ -109,6 +109,19 @@ abstract class Sprig_Field_Core {
 	}
 
 	/**
+	 * Get the scalar default value of this Field, if applicable
+	 *
+	 * @return mixed|Sprig_Void Returns a Sprig_Void instance if a default value
+	 *                          is not applicable to this Field.
+	 *                          Otherwise, returns the default value.
+	 */
+	public function default_value()
+	{
+		// Set the default value for any field that is stored in the database
+		return $this->value($this->default);
+	}
+
+	/**
 	 * Initialize the Sprig Field. This method will only be called once by
 	 * Sprig.
 	 *

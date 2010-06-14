@@ -4,6 +4,19 @@ class Sprig_Field_BelongsTo extends Sprig_Field_ForeignKey {
 
 	public $in_db = TRUE;
 
+	/**
+	 * Get the scalar default value of this Field, if applicable
+	 *
+	 * @return mixed|Sprig_Void Returns a Sprig_Void instance if a default value
+	 *                          is not applicable to this Field.
+	 *                          Otherwise, returns the default value.
+	 */
+	public function default_value()
+	{
+		// Set the default value for any field that is stored in the database
+		return $this->value($this->default);
+	}
+
 	public function input($name, $value, array $attr = NULL)
 	{
 		$model = Sprig::factory($this->model);

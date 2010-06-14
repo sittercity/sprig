@@ -139,10 +139,11 @@ abstract class Sprig_Core {
 
 			$field->init($this, $name);
 
-			if ($field instanceof Sprig_Field_BelongsTo OR ! $field instanceof Sprig_Field_ForeignKey)
+			$default_value = $field->default_value();
+			if ( ! $default_value instanceof Sprig_Void )
 			{
 				// Set the default value for any field that is stored in the database
-				$this->_original[$name] = $field->value($field->default);
+				$this->_original[$name] = $default_value;
 			}
 		}
 	}
