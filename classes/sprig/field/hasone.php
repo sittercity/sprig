@@ -21,6 +21,21 @@ class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 	}
 
 	/**
+	 * Extracts the related object representing the value of a foreign key Field
+	 *
+	 * @param mixed $value The current scalar value of this Field
+	 *
+	 * @return Sprig|array
+	 */
+	public function related($value)
+	{
+		$model = Sprig::factory($this->model);
+		$parent = $this->object;
+		$pk = $parent->pk();
+		return $model->values(array($parent->model() => $parent->{$pk}));
+	}
+
+	/**
 	 * Get and optionally set the public $this->column property, based on
 	 * $field_name.  Provided as a method, so that the behavior can be
 	 * easily overridden.

@@ -136,10 +136,7 @@ abstract class Sprig_Core {
 					$this->_primary_key[] = $name;
 				}
 			}
-		}
 
-		foreach ($this->_fields as $name => $field)
-		{
 			$field->init($this, $name);
 
 			if ($field instanceof Sprig_Field_BelongsTo OR ! $field instanceof Sprig_Field_ForeignKey)
@@ -202,6 +199,7 @@ abstract class Sprig_Core {
 
 		$field = $this->_fields[$name];
 
+		$value = new Sprig_Void;
 		if ($this->changed($name))
 		{
 			$value = $this->_changed[$name];
@@ -213,108 +211,29 @@ abstract class Sprig_Core {
 
 		if ($field instanceof Sprig_Field_ForeignKey)
 		{
-			if ( ! isset($this->_related[$name]))
+			$related = $field->related($value);
+
+			if ($field instanceof Sprig_Field_HasMany)
 			{
-				$model = Sprig::factory($field->model);
-
-				if ($field instanceof Sprig_Field_HasMany)
+				if ( ! $this->changed($name))
 				{
-					if ($field instanceof Sprig_Field_ManyToMany)
-					{
-						if (isset($value))
-						{
-							if (empty($value))
-							{
-								return new Database_Result_Cached(array(), '');
-							}
-							else
-							{
-								// TODO this needs testing
-								$wrapped = array_map(
-									array($model->field($model->pk()),'_database_wrap'),
-									$value);
-								$query = DB::select()
-									->where($model->pk(), 'IN', $wrapped);
-							}
-						}
-						else
-						{
-							// We can grab the PK from the field definition.
-							// If it doesn't exist, revert to the model choice
-							if ( isset($field->foreign_key) AND $field->foreign_key)
-							{
-								$fk = $field->through.'.'.$field->foreign_key;
-								$fk2 = $field->through.'.'.$model->pk();
-							}
-							else
-							{
-								$fk = $this->fk($field->through);
-								$fk2 = $model->fk($field->through);
-							}
-
-							$query = DB::select()
-								->join($field->through)
-									->on($fk2, '=', $model->pk(TRUE))
-								->where(
-									$fk,
-									'=',
-									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
-						}
-					}
-					else
-					{
-						if (isset($value))
-						{
-							$query = DB::select()
-								->where(
-									$model->pk(),
-									'=',
-									$field->_database_wrap($value));
-						}
-						else
-						{
-							if ( isset($field->foreign_key) AND $field->foreign_key)
-							{
-								$fk = $field->foreign_key;
-							}
-							else
-							{
-								$fk = $model->fk();
-							}
-
-							$query = DB::select()
-								->where(
-									$fk,
-									'=',
-									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
-						}
-					}
-
-					$related = $model->load($query, NULL);
-
-					if ( ! $this->changed($name))
-					{
-						// We can assume this is the original value because no
-						// changed value exists
-						$this->_original[$name] = $field->value($related);
-					}
+					// We can assume this is the original value because no
+					// changed value exists
+					$this->_original[$name] = $field->value($related);
 				}
-				elseif ($field instanceof Sprig_Field_BelongsTo)
-				{
-					if ( isset($field->primary_key) AND $field->primary_key)
-						$pk = $field->primary_key;
-					else
-						$pk = $model->pk();
-
-					$related = $model->values(array($pk => $value));
-				}
-				elseif ($field instanceof Sprig_Field_HasOne)
-				{
-					$related = $model->values(array($this->_model => $this->{$this->_primary_key}));
-				}
-
-				$value = $this->_related[$name] = $related;
 			}
+
+			$value = $this->_related[$name] = $related;
+		}
+
+		if ($value instanceof Sprig_Void)
+		{
+			// This should "never" happen (A Sprig_Exception above should be
+			// be triggered before we get here).  But never say never...
+			throw new Sprig_Exception(
+				':name model does not have a field :field',
+				array(':name' => get_class($this), ':field' => $name)
+			);
 		}
 
 		return $value;

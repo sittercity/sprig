@@ -39,6 +39,15 @@ abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 		}
 	}
 
+	/**
+	 * Extracts the related object representing the value of a foreign key Field
+	 *
+	 * @param mixed $value The current scalar value of this Field
+	 *
+	 * @return Sprig|array
+	 */
+	abstract public function related($value);
+
 	public function value($value)
 	{
 		if (is_object($value))

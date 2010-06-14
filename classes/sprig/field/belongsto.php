@@ -19,6 +19,29 @@ class Sprig_Field_BelongsTo extends Sprig_Field_ForeignKey {
 	}
 
 	/**
+	 * Extracts the related object representing the value of a foreign key Field
+	 *
+	 * @param mixed $value The current scalar value of this Field
+	 *
+	 * @return Sprig|array
+	 */
+	public function related($value)
+	{
+		$model = Sprig::factory($this->model);
+
+		if (isset($this->primary_key) AND $this->primary_key)
+		{
+			$pk = $this->primary_key;
+		}
+		else
+		{
+			$pk = $model->pk();
+		}
+
+		return $model->values(array($pk => $value));
+	}
+
+	/**
 	 * Get and optionally set the public $this->column property, based on
 	 * $field_name.  Provided as a method, so that the behavior can be
 	 * easily overridden.

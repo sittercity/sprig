@@ -77,6 +77,24 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 	}
 
 	/**
+	 * Extracts the related object representing the value of a foreign key Field
+	 *
+	 * @param mixed $value The current scalar value of this Field
+	 *
+	 * @return Sprig|array
+	 */
+	public function related($value)
+	{
+		$model = Sprig::factory($this->model);
+		$query = $this->related_query($model, $value);
+		if ($query instanceof Database_Query_Builder_Select)
+		{
+			return $model->load($query, NULL);
+		}
+		return new Database_Result_Cached(array(), '');
+	}
+
+	/**
 	 * Get and optionally set the public $this->model property, based on
 	 * $field_name.  Provided as a method, so that the behavior can be
 	 * easily overridden.
@@ -92,6 +110,47 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 			$this->model = Inflector::singular($field_name);
 		}
 		return $this->model;
+	}
+
+	/**
+	 * Produces a Select Query for retrieving this HasMany ForeignKey Field
+	 * relationship based on the current scalar $value.
+	 *
+	 * @param Sprig $model A prototype instance of $this->model
+	 * @param mixed $value The current scalar value of this Field
+	 *
+	 * @return Database_Query_Builder_Select|null
+	 */
+	protected function related_query(Sprig $model, $value)
+	{
+		if ($value instanceof Sprig_Void)
+		{
+			if (isset($this->foreign_key) AND $this->foreign_key)
+			{
+				$fk = $this->foreign_key;
+			}
+			else
+			{
+				$fk = $model->fk();
+			}
+
+			$parent = $this->object;
+			$pk = $parent->pk();
+			$query = DB::select()
+				->where(
+					$fk,
+					'=',
+					$parent->field($pk)->_database_wrap($parent->{$pk}));
+		}
+		else
+		{
+			$query = DB::select()
+				->where(
+					$model->pk(),
+					'=',
+					$this->_database_wrap($value));
+		}
+		return $query;
 	}
 
 } // End Sprig_Field_ManyToMany
