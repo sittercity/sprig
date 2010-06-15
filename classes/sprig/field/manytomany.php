@@ -34,6 +34,65 @@ class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 	}
 
 	/**
+	 * Provides the original values for a Sprig Field if they are not set.  This
+	 * is only applicable for certain Sprig Fields.
+	 *
+	 * @return array|null Returns an array of the original values, or NULL if
+	 *                    not applicable
+	 */
+	public function set_original()
+	{
+		$model = Sprig::factory($this->model);
+
+		if (isset($this->foreign_key) AND $this->foreign_key)
+		{
+			$fk = $this->foreign_key;
+		}
+		else
+		{
+			$fk = $model->fk();
+		}
+
+		$parent = $this->object;
+		$pk = $parent->pk();
+		$result = DB::select(
+				array(
+					$model->field($model->pk())->_database_unwrap($fk),
+					$model->fk())
+				)
+			->from($this->through)
+			->where(
+				$fk,
+				'=',
+				$parent->field($pk)->_database_wrap($parent->{$pk}))
+			->execute($parent->db());
+
+		// The original value for the relationship must be defined
+		// before we can tell if the value has been changed
+		return $this->value($result->as_array(NULL, $model->fk()));
+	}
+
+	/**
+	 * Provides the related values for a Sprig Field if they are not set.  This
+	 * is only applicable for certain Sprig Fields.
+	 *
+	 * @param mixed $value The value or values to set
+	 *
+	 * @return array|null Returns an array of the related values, or NULL if
+	 *                    not applicable
+	 *
+	 * @throws Sprig_Exception Exception thrown if attempting to replace a
+	 *                         Sprig relationship that does not support being
+	 *                         overridden.
+	 */
+	public function set_related($value)
+	{
+		// For some Sprig Fields, setting the related values is not necessary
+		// Pass
+		return NULL;
+	}
+
+	/**
 	 * Produces a Select Query for retrieving this HasMany ForeignKey Field
 	 * relationship based on the current scalar $value.
 	 *

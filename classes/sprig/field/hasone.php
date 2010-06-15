@@ -27,7 +27,7 @@ class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 	 *
 	 * @return Sprig|array
 	 */
-	public function related($value)
+	public function get_related($value)
 	{
 		$model = Sprig::factory($this->model);
 		$parent = $this->object;

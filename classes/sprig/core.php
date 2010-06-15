@@ -212,7 +212,7 @@ abstract class Sprig_Core {
 
 		if ($field instanceof Sprig_Field_ForeignKey)
 		{
-			$related = $field->related($value);
+			$related = $field->get_related($value);
 
 			if ($field instanceof Sprig_Field_HasMany)
 			{
@@ -276,77 +276,27 @@ abstract class Sprig_Core {
 			// No extra processing necessary
 			return;
 		}
-		elseif ($field instanceof Sprig_Field_ManyToMany)
+		else if ($field instanceof Sprig_Field_ForeignKey)
 		{
-			if ( ! isset($this->_original[$name]))
+			if ( ! isset($this->_original[$name]) )
 			{
-				$model = Sprig::factory($field->model);
-
-				if ( isset($field->foreign_key) AND $field->foreign_key)
+				$original = $field->set_original();
+				if (NULL !== $original)
 				{
-					$fk = $field->foreign_key;
-				}
-				else
-				{
-					$fk = $model->fk();
-				}
-
-				$result = DB::select(
-						array(
-							$model->field($model->pk())->_database_unwrap($fk),
-							$model->fk())
-						)
-					->from($field->through)
-					->where(
-						$fk,
-						'=',
-						$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
-					->execute($this->_db);
-
-				// The original value for the relationship must be defined
-				// before we can tell if the value has been changed
-				$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
-			}
-		}
-		elseif ($field instanceof Sprig_Field_HasMany)
-		{
-			foreach ($value as $key => $val)
-			{
-				if ( ! $val instanceof Sprig)
-				{
-					$model = Sprig::factory($field->model);
-					$pk    = $model->pk();
-
-					if ( ! is_array($val))
-					{
-						// Assume the value is a primary key
-						$val = array($pk => $val);
-					}
-
-					if (isset($val[$pk]))
-					{
-						// Load the record so that changed values can be determined
-						$model->values(array($pk => $val[$pk]))->load();
-					}
-
-					$value[$key] = $model->values($val);
+					// The original value for the relationship must be defined
+					// before we can tell if the value has been changed
+					$this->_original[$name] = $original;
 				}
 			}
 
-			// Set the related objects to this value
-			$this->_related[$name] = $value;
-
-			// No extra processing necessary
-			return;
-		}
-		elseif ($field instanceof Sprig_Field_BelongsTo)
-		{
-			// Pass
-		}
-		elseif ($field instanceof Sprig_Field_ForeignKey)
-		{
-			throw new Sprig_Exception('Cannot change relationship of :model->:field using __set()',
-				array(':model' => $this->_model, ':field' => $name));
+			$related = $field->set_related($value);
+			if (NULL !== $related)
+			{
+				// Set the related objects to this value
+				$this->_related[$name] = $related;
+				// No extra processing necessary
+				return;
+			}
 		}
 
 		// Get the correct type of value

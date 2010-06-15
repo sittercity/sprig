@@ -83,7 +83,7 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 	 *
 	 * @return Sprig|array
 	 */
-	public function related($value)
+	public function get_related($value)
 	{
 		$model = Sprig::factory($this->model);
 		$query = $this->related_query($model, $value);
@@ -92,6 +92,47 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 			return $model->load($query, NULL);
 		}
 		return new Database_Result_Cached(array(), '');
+	}
+
+	/**
+	 * Provides the related values for a Sprig Field if they are not set.  This
+	 * is only applicable for certain Sprig Fields.
+	 *
+	 * @param mixed $value The value or values to set
+	 *
+	 * @return array|null Returns an array of the related values, or NULL if
+	 *                    not applicable
+	 *
+	 * @throws Sprig_Exception Exception thrown if attempting to replace a
+	 *                         Sprig relationship that does not support being
+	 *                         overridden.
+	 */
+	public function set_related($value)
+	{
+		foreach ($value as $key => $val)
+		{
+			if ( ! $val instanceof Sprig )
+			{
+				$model = Sprig::factory($field->model);
+				$pk    = $model->pk();
+
+				if ( ! is_array($val) )
+				{
+					// Assume the value is a primary key
+					$val = array($pk => $val);
+				}
+
+				if (isset($val[$pk]))
+				{
+					// Load the record so that changed values can be determined
+					$model->values(array($pk => $val[$pk]))->load();
+				}
+
+				$value[$key] = $model->values($val);
+			}
+		}
+
+		return $value;
 	}
 
 	/**

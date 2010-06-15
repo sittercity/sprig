@@ -54,13 +54,47 @@ abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 	}
 
 	/**
+	 * Provides the original values for a Sprig Field if they are not set.  This
+	 * is only applicable for certain Sprig Fields.
+	 *
+	 * @return array|null Returns an array of the original values, or NULL if
+	 *                    not applicable
+	 */
+	public function set_original()
+	{
+		// For most Sprig Fields, setting the original values is not necessary
+		return NULL;
+	}
+
+	/**
 	 * Extracts the related object representing the value of a foreign key Field
 	 *
 	 * @param mixed $value The current scalar value of this Field
 	 *
 	 * @return Sprig|array
 	 */
-	abstract public function related($value);
+	abstract public function get_related($value);
+
+	/**
+	 * Provides the related values for a Sprig Field if they are not set.  This
+	 * is only applicable for certain Sprig Fields.
+	 *
+	 * @param mixed $value The value or values to set
+	 *
+	 * @return array|null Returns an array of the related values, or NULL if
+	 *                    not applicable
+	 *
+	 * @throws Sprig_Exception Exception thrown if attempting to replace a
+	 *                         Sprig relationship that does not support being
+	 *                         overridden.
+	 */
+	public function set_related($value)
+	{
+		throw new Sprig_Exception(
+			'Cannot change relationship of :model->:field using __set()',
+			array(':model' => $this->object->model(), ':field' => $this->label)
+		);
+	}
 
 	public function value($value)
 	{
