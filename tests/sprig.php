@@ -214,7 +214,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		
 		$user->name->load();
 		$this->assertEquals('one', $user->name->name);
-		$this->assertEquals(1, $user->name->test_user_id);
+		$this->assertEquals(1, $user->name->test_user->id);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 	
 	}
@@ -227,15 +227,15 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	{
 		$q_before = $this->getQueries();
 		$name = Sprig::factory('Test_Name');
-		$name->test_user_id = 1;
+		$name->test_user = 1;
 		$name = $name->load();
 		
 		$this->assertEquals('one', $name->name);
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
 		
-		$name->user->load();
-		$this->assertEquals(1, $name->user->id);
-		$this->assertEquals('Mr', $name->user->title);
+		$name->test_user->load();
+		$this->assertEquals(1, $name->test_user->id);
+		$this->assertEquals('Mr', $name->test_user->title);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 	}
 	
@@ -313,11 +313,11 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		
 		$user1->name->name = 'foo';
 		$this->assertEquals('foo', $user1->name->name);
-		$this->assertEquals(2, $user1->name->test_user_id);
+		$this->assertEquals(2, $user1->name->test_user->id);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 		
-		$user0->name->test_user_id = 12;
-		$this->assertEquals(12, $user0->name->test_user_id);
+		$user0->name->test_user = 12;
+		$this->assertEquals(12, $user0->name->test_user->id);
 		$this->assertEquals('one', $user0->name->name);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 	}
