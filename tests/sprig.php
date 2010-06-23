@@ -298,12 +298,14 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		
 		// intersperse the checks so we can be sure where the queries happen.
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
+		$this->assertTrue((bool)$user0->name->changed());
 		$user0->name->load();
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 		$this->assertEquals('one', $user0->name->name);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 		$this->assertEquals('one', $user0->name->name);
 		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
+		$this->assertTrue((bool)$user1->name->changed());
 		$user1->name->load();
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 		$this->assertEquals('two', $user1->name->name);
