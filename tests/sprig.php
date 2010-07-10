@@ -99,7 +99,32 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		
 		$this->assertQueryCountIncrease(0, $q_before, $this->getQueries());
 	}
-	
+
+	/**
+	 * Test that __set properly clears old cache entries when a BelongsTo
+	 * relation is replaced with a fixed foreign key ID.
+	 * This is an attempt to address a possibly shortcoming of the original fix
+	 * for issue 52.
+	 * @ticket 52
+	 */
+	public function testClearRelatedCache()
+	{
+		$q_before = $this->getQueries();
+
+		$name = Sprig::factory('Test_Name');
+
+		// First, assign a full object
+		$user1 = Sprig::factory('Test_User', array('id' => 1));
+		$name->test_user = $user1;
+		$this->assertEquals(1, $name->test_user->id);
+
+		// Now, replace with a fixed ID value
+		$name->test_user = 2;
+		$this->assertEquals(2, $name->test_user->id);
+
+		$this->assertQueryCountIncrease(0, $q_before, $this->getQueries());
+	}
+
 	/**
 	 * Test the getting the default value of a field.
 	 * @ticket 53
