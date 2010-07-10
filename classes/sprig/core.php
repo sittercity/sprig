@@ -393,7 +393,7 @@ abstract class Sprig_Core {
 							}
 							else
 							{
-								$fk = $model->fk();
+								$fk = $this->fk();
 							}
 
 							$query = DB::select()
@@ -479,10 +479,12 @@ abstract class Sprig_Core {
 				if ( isset($field->foreign_key) AND $field->foreign_key)
 				{
 					$fk = $field->foreign_key;
+					$left_key = $fk;
 				}
 				else
 				{
 					$fk = $model->fk();
+					$left_key = $this->fk();
 				}
 
 				$result = DB::select(
@@ -492,7 +494,7 @@ abstract class Sprig_Core {
 						)
 					->from($field->through)
 					->where(
-						$fk,
+						$left_key,
 						'=',
 						$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
 					->execute($this->_db);
@@ -551,7 +553,10 @@ abstract class Sprig_Core {
 			$changed = call_user_func($field->hash_with, $changed);
 		}
 
-		if ($changed !== $this->_original[$name])
+		$re_changed = (array_key_exists($name, $this->_changed) &&
+			$changed !== $this->_changed[$name]);
+		$original = $changed === $this->_original[$name];
+		if ($re_changed OR ! $original)
 		{
 			if (isset($this->_related[$name]))
 			{
@@ -559,13 +564,22 @@ abstract class Sprig_Core {
 				unset($this->_related[$name]);
 			}
 
-			// Set a changed value
-			$this->_changed[$name] = $changed;
-
-			if ($field instanceof Sprig_Field_ForeignKey AND is_object($value))
+			if ($original)
 			{
-				// Store the related object for later use
-				$this->_related[$name] = $value;
+				// Simply pretend the change never happened
+				unset($this->_changed[$name]);
+			}
+			else
+			{
+				// Set a changed value
+				$this->_changed[$name] = $changed;
+			
+				if ($field instanceof Sprig_Field_ForeignKey
+					AND is_object($value))
+				{
+					// Store the related object for later use
+					$this->_related[$name] = $value;
+				}
 			}
 		}
 	}
@@ -1194,7 +1208,7 @@ abstract class Sprig_Core {
 				}
 				else
 				{
-					$fk = $this->fk($field->through);
+					$fk = $this->fk();
 				}
 
 				$model = Sprig::factory($field->model);
@@ -1205,7 +1219,7 @@ abstract class Sprig_Core {
 						->values(
 							array(
 								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
-								$model->field($model->pk())->_database_wrap($id))
+								$model->field($model->fk())->_database_wrap($id))
 							)
 						->execute($this->_db);
 				}
@@ -1325,7 +1339,7 @@ abstract class Sprig_Core {
 						}
 						else
 						{
-							$fk = $this->fk($field->through);
+							$fk = $this->fk();
 						}
 
 						foreach ($new as $id)
@@ -1334,7 +1348,7 @@ abstract class Sprig_Core {
 								->values(
 									array(
 										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
-										$model->field($model->pk())->_database_wrap($id)
+										$model->field($model->fk())->_database_wrap($id)
 									))
 								->execute($this->_db);
 						}
