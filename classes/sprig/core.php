@@ -551,7 +551,10 @@ abstract class Sprig_Core {
 			$changed = call_user_func($field->hash_with, $changed);
 		}
 
-		if ($changed !== $this->_original[$name])
+		$re_changed = (array_key_exists($name, $this->_changed) &&
+			$changed !== $this->_changed[$name]);
+		$original = $changed === $this->_original[$name];
+		if ($re_changed OR ! $original)
 		{
 			if (isset($this->_related[$name]))
 			{
@@ -559,13 +562,22 @@ abstract class Sprig_Core {
 				unset($this->_related[$name]);
 			}
 
-			// Set a changed value
-			$this->_changed[$name] = $changed;
-
-			if ($field instanceof Sprig_Field_ForeignKey AND is_object($value))
+			if ($original)
 			{
-				// Store the related object for later use
-				$this->_related[$name] = $value;
+				// Simply pretend the change never happened
+				unset($this->_changed[$name]);
+			}
+			else
+			{
+				// Set a changed value
+				$this->_changed[$name] = $changed;
+			
+				if ($field instanceof Sprig_Field_ForeignKey
+					AND is_object($value))
+				{
+					// Store the related object for later use
+					$this->_related[$name] = $value;
+				}
 			}
 		}
 	}
