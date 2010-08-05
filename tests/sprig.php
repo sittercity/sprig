@@ -347,7 +347,57 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('one', $user0->name->name);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
 	}
-	
+
+	/**
+	 * Ensure that when a Sprig is destroyed, that any memory leak is within
+	 * acceptable levels.
+	 *
+	 * Note: PHP is succeptable to memory leaks when two objects have
+	 * references to each other.
+	 *
+	 * @return null
+	 *
+	 * @link http://github.com/shadowhand/sprig/issues/#issue/74
+	 */
+	public function testMemoryLeakage()
+	{
+		if ( ! function_exists('memory_get_usage') )
+		{
+			$this->markTestSkipped(
+				'Your ancient PHP version doesn\'t support memory_get_usage()'
+			);
+		}
+
+		$before = $usage = 0;
+		$before = $usage = memory_get_usage();
+
+		// Load one Sprig to cheat
+		$this->exerciseUserRetrieval();
+		$usage = memory_get_usage();
+		$this->assertLessThan(500000, $usage-$before, 'used '.$usage.' memory');
+
+		// Load another to test for leakage
+		$before = $usage;
+		$this->exerciseUserRetrieval();
+		$usage = memory_get_usage();
+		$this->assertLessThan(15000, $usage-$before, 'used '.$usage.' memory');
+	}
+
+	/**
+	 * Retrieve and walk through one full User object.  Used by
+	 * testMemoryLeakage() to test reclaiming used memory space.
+	 *
+	 * @return null
+	 */
+	public function exerciseUserRetrieval()
+	{
+		$user = Sprig::factory('Test_User', array('id' => 1))->load();
+		$this->assertEquals(3, count($user->tags));
+		$this->assertEquals(3, count($user->tags->as_array()));
+		$user->name->load();
+		$this->assertTrue($user->name->loaded());
+	}
+
 	/**
 	 * Get the currently logged set of queries from the database profiling.
 	 *
