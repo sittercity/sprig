@@ -9,6 +9,11 @@
  */
 class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 
+	public function setup()
+	{
+		if ( ! Kohana::config('database')->default['profiling'])
+			$this->fail('Must have profiling on to use these tests!');
+	}
 
 	/**
 	 * Assert some tables with data into the database before we start testing
