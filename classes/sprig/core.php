@@ -1111,7 +1111,7 @@ abstract class Sprig_Core {
 
 			if (count($result))
 			{
-				$this->values($result[0])->state('loaded');
+				$this->state('loading')->values($result[0])->state('loaded');
 			}
 
 			return $this;
