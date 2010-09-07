@@ -9,6 +9,8 @@
  */
 abstract class Sprig_Core {
 
+	const VERSION = 1.0;
+
 	// Model many-to-many relations
 	protected static $_relations;
 
