@@ -6,10 +6,7 @@ A database modeling system for the [Kohana framework](http://kohanaphp.com/) (v3
 
 Each model must:
 
-* extenecvknvprv
-
-
-d the `Sprig` class
+* extend the `Sprig` class
 * define a protected `_init()` method and set the field mappings
 
 Example of a model:
