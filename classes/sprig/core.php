@@ -9,6 +9,8 @@
  */
 abstract class Sprig_Core {
 
+	const VERSION = 1.0;
+
 	// Model many-to-many relations
 	protected static $_relations;
 
@@ -1111,7 +1113,7 @@ abstract class Sprig_Core {
 
 			if (count($result))
 			{
-				$this->values($result[0])->state('loaded');
+				$this->state('loading')->values($result[0])->state('loaded');
 			}
 
 			return $this;
