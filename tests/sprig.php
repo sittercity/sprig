@@ -55,7 +55,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 				(2, 'Mrs', 1992, 3, 12, FROM_UNIXTIME(12)),
 				(3, 'Dr' , 1993, 5, 15, FROM_UNIXTIME(15))",
 			"INSERT INTO `test_names` VALUES (1, 'one'), (2, 'two'), (3, 'three')",
-			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi'), (9, '12345')",
+			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi'), (9, '01234')",
 			'INSERT INTO `test_tags_test_users` VALUES (1,1), (2,2), (3,3), (1,2), (1,3), (2,1), (2,3)',
 		);
 		
@@ -363,9 +363,9 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	 */
 	public function testCharViaChar()
 	{
-		$tag = Sprig::Factory('Test_Tag', array('name' => '12345'))->load();
+		$tag = Sprig::Factory('Test_Tag', array('name' => '01234'))->load();
 		$this->assertTrue($tag->loaded());
-		$this->assertSame('12345', $tag->name);
+		$this->assertSame('01234', $tag->name);
 	}
 
 	/**
@@ -378,9 +378,9 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	 */
 	public function testCharViaInt()
 	{
-		$tag = Sprig::Factory('Test_Tag', array('name' => 12345))->load();
+		$tag = Sprig::Factory('Test_Tag', array('name' => 1234))->load();
 		$this->assertTrue($tag->loaded());
-		$this->assertSame('12345', $tag->name);
+		$this->assertSame('01234', $tag->name);
 	}
 
 	/**

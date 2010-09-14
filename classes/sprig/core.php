@@ -1113,6 +1113,7 @@ abstract class Sprig_Core {
 
 			if (count($result))
 			{
+				$this->_changed = array();
 				$this->state('loading')->values($result[0])->state('loaded');
 			}
 
