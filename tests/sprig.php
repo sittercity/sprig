@@ -363,9 +363,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	 */
 	public function testCharViaChar()
 	{
-		$tag = Sprig::Factory('Test_Tag', array('name' => '12345'));
-		$this->assertSame('12345', $tag->name);
-		$tag->load();
+		$tag = Sprig::Factory('Test_Tag', array('name' => '12345'))->load();
 		$this->assertTrue($tag->loaded());
 		$this->assertSame('12345', $tag->name);
 	}
@@ -380,9 +378,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	 */
 	public function testCharViaInt()
 	{
-		$tag = Sprig::Factory('Test_Tag', array('name' => 12345));
-		$this->assertSame('12345', $tag->name);
-		$tag->load();
+		$tag = Sprig::Factory('Test_Tag', array('name' => 12345))->load();
 		$this->assertTrue($tag->loaded());
 		$this->assertSame('12345', $tag->name);
 	}
