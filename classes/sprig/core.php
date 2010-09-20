@@ -9,7 +9,7 @@
  */
 abstract class Sprig_Core {
 
-	const VERSION = 1.0;
+	const VERSION = '1.0.0';
 
 	// Model many-to-many relations
 	protected static $_relations;
@@ -1113,6 +1113,7 @@ abstract class Sprig_Core {
 
 			if (count($result))
 			{
+				$this->_changed = array();
 				$this->state('loading')->values($result[0])->state('loaded');
 			}
 

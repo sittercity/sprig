@@ -55,7 +55,7 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 				(2, 'Mrs', 1992, 3, 12, FROM_UNIXTIME(12)),
 				(3, 'Dr' , 1993, 5, 15, FROM_UNIXTIME(15))",
 			"INSERT INTO `test_names` VALUES (1, 'one'), (2, 'two'), (3, 'three')",
-			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi')",
+			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi'), (9, '01234')",
 			'INSERT INTO `test_tags_test_users` VALUES (1,1), (2,2), (3,3), (1,2), (1,3), (2,1), (2,3)',
 		);
 		
@@ -351,6 +351,36 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(12, $user0->name->test_user->id);
 		$this->assertEquals('one', $user0->name->name);
 		$this->assertQueryCountIncrease(3, $q_before, $this->getQueries());
+	}
+
+	/**
+	 * Ensure that loading a sprig by way of a char field retains its string
+	 * type
+	 *
+	 * @return null
+	 *
+	 * @group ticket61
+	 */
+	public function testCharViaChar()
+	{
+		$tag = Sprig::Factory('Test_Tag', array('name' => '01234'))->load();
+		$this->assertTrue($tag->loaded());
+		$this->assertSame('01234', $tag->name);
+	}
+
+	/**
+	 * Ensure that loading a sprig by way of a char field with an int value
+	 * retains its string type
+	 *
+	 * @return null
+	 *
+	 * @group ticket61
+	 */
+	public function testCharViaInt()
+	{
+		$tag = Sprig::Factory('Test_Tag', array('name' => 1234))->load();
+		$this->assertTrue($tag->loaded());
+		$this->assertSame('01234', $tag->name);
 	}
 
 	/**
