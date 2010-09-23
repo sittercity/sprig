@@ -679,11 +679,19 @@ abstract class Sprig_Core {
 		$values = array();
 		if (is_object($value))
 		{
-			$values[] = $value->field($model->pk());
+			$values[$value->{$value->pk()}] = $value->{$value->pk()};
 		}
 		elseif(is_numeric($value))
 		{
-			$values[] = $value;
+			$values[$value] = $value;
+		}
+		elseif(is_array($value))
+		{
+			$values = $value;
+		}
+		else
+		{
+			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
 		$this->$name = $this->_original[$name]+$values;
@@ -711,11 +719,19 @@ abstract class Sprig_Core {
 		$values = array();
 		if (is_object($value))
 		{
-			$values[] = $value->field($model->pk());
+			$values[$value->{$value->pk()}] = $value->{$value->pk()};
 		}
 		elseif(is_numeric($value))
 		{
-			$values[] = $value;
+			$values[$value] = $value;
+		}
+		elseif(is_array($value))
+		{
+			$values = $value;
+		}
+		else
+		{
+			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
 		$original = $this->_original[$name];
