@@ -354,9 +354,9 @@ abstract class Sprig_Core {
 						{
 							// We can grab the PK from the field definition.
 							// If it doesn't exist, revert to the model choice
-							if ( isset($field->foreign_key) AND $field->foreign_key)
+							if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
 							{
-								$fk = $field->through.'.'.$field->foreign_key;
+								$fk = $field->through.'.'.$field->left_foreign_key;
 								$fk2 = $field->through.'.'.$model->pk();
 							}
 							else
@@ -475,9 +475,9 @@ abstract class Sprig_Core {
 			{
 				$model = Sprig::factory($field->model);
 
-				if ( isset($field->foreign_key) AND $field->foreign_key)
+				if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
 				{
-					$fk = $field->foreign_key;
+					$fk = $field->left_foreign_key;
 				}
 				else
 				{
@@ -657,6 +657,76 @@ abstract class Sprig_Core {
 		}
 
 		return $props;
+	}
+
+	/**
+	 * Adds a relationship to the model
+	 * 
+	 * @param  string  field name to add the relationship to
+	 * @param  mixed   model to add, can be in integer model ID, a single model object, or an array of integers
+	 * 
+	 * @throws Sprig_Exception  on invalid relationship or model arguments
+	 *
+	 * @return $this
+	 */
+	public function add($name, $value)
+	{
+		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		{
+			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
+		}
+
+		$values = array();
+		if (is_object($value))
+		{
+			$values[] = $value->field($model->pk());
+		}
+		elseif(is_numeric($value))
+		{
+			$values[] = $value;
+		}
+
+		$this->$name = $this->_original[$name]+$values;
+
+		return $this;
+	}
+
+	/**
+	 * Removes a relationship to the model
+	 * 
+	 * @param  string  field name to add the relationship to
+	 * @param  mixed   model to remove, can be in integer model ID, a single model object, or an array of integers
+	 * 
+	 * @throws Sprig_Exception  on invalid relationship or model arguments
+	 *
+	 * @return $this
+	 */
+	public function remove($name, $value)
+	{
+		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		{
+			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
+		}
+
+		$values = array();
+		if (is_object($value))
+		{
+			$values[] = $value->field($model->pk());
+		}
+		elseif(is_numeric($value))
+		{
+			$values[] = $value;
+		}
+
+		$original = $this->_original[$name];
+		foreach ($values as $value)
+		{
+			unset($original[$value]);
+		}
+
+		$this->$name = $original;
+
+		return $this;
 	}
 
 	/**
@@ -1304,45 +1374,45 @@ abstract class Sprig_Core {
 
 					$model = Sprig::factory($field->model);
 
+					if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
+					{
+						$left_fk = $field->left_foreign_key;
+					}
+					else
+					{
+						$left_fk = $this->fk();
+					}
+
+					if ( isset($field->right_foreign_key) AND $field->right_foreign_key)
+					{
+						$right_fk = $field->right_foreign_key;
+					}
+					else
+					{
+						$right_fk = $model->fk();
+					}
+
 					// Find old relationships that must be deleted
 					if ($old = array_diff($this->_original[$name], $value))
 					{
 						// TODO this needs testing
 						$old = array_map(array($this->_fields[$this->_primary_key],'_database_wrap'), $old);
 
-						if ( isset($field->foreign_key) AND $field->foreign_key)
-						{
-							$fk = $field->foreign_key;
-						}
-						else
-						{
-							$fk = $this->fk();
-						}
-
 						DB::delete($field->through)
 							->where(
-								$fk,
+								$left_fk,
 								'=',
 								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
-							->where($model->fk(), 'IN', $old)
+							->where($right_fk, 'IN', $old)
 							->execute($this->_db);
 					}
 
 					// Find new relationships that must be inserted
 					if ($new = array_diff($value, $this->_original[$name]))
 					{
-						if ( isset($field->foreign_key) AND $field->foreign_key)
-						{
-							$fk = $field->foreign_key;
-						}
-						else
-						{
-							$fk = $this->fk($field->through);
-						}
-
 						foreach ($new as $id)
 						{
-							DB::insert($field->through, array($fk, $model->fk()))
+							DB::insert($field->through, array($left_fk, $right_fk))
 								->values(
 									array(
 										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),

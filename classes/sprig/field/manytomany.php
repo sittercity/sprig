@@ -13,4 +13,10 @@ class Sprig_Field_ManyToMany extends Sprig_Field_HasMany {
 
 	public $through;
 
+	// This fk
+	public $left_foreign_key = NULL;
+
+	// other model's fk
+	public $right_foreign_key = NULL;
+
 } // End Sprig_Field_ManyToMany
