@@ -671,7 +671,7 @@ abstract class Sprig_Core {
 	 */
 	public function add($name, $value)
 	{
-		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
 			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
 		}
@@ -694,7 +694,7 @@ abstract class Sprig_Core {
 			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
-		$this->$name = $this->_original[$name]+$values;
+		$this->$name = arr::get($this->_original, $name, array())+$values;
 
 		return $this;
 	}
@@ -711,7 +711,7 @@ abstract class Sprig_Core {
 	 */
 	public function remove($name, $value)
 	{
-		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
 			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
 		}

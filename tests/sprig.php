@@ -567,6 +567,20 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	}
 
 	/**
+	 * Tests new object relationships
+	 *
+	 * @return null
+	 */
+	public function test_new_add()
+	{
+		$user = Sprig::factory('Test_User', array('id' => 4))->load();
+		$user->add('tags', 1)->update();
+		$this->assertEquals(1, count($user->tags));
+
+		$user->remove('tags', 1)->update();
+	}
+
+	/**
 	 * Tests creating and removing relationships
 	 *
 	 * @return null
