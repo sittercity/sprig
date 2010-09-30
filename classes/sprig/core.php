@@ -734,6 +734,8 @@ abstract class Sprig_Core {
 			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
+		// Make sure the field is accessed to load it's values
+		$this->$name;
 		$original = $this->_original[$name];
 		foreach ($values as $value)
 		{
