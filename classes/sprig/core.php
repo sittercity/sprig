@@ -419,7 +419,7 @@ abstract class Sprig_Core {
 					else
 						$pk = $model->pk();
 
-					$related = $model->values(array($pk => $value));
+					$related = $model->values(array($pk => $value), true);
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
@@ -519,10 +519,10 @@ abstract class Sprig_Core {
 					if (isset($val[$pk]))
 					{
 						// Load the record so that changed values can be determined
-						$model->values(array($pk => $val[$pk]))->load();
+						$model->values(array($pk => $val[$pk]), true)->load();
 					}
 
-					$value[$key] = $model->values($val);
+					$value[$key] = $model->values($val, true);
 				}
 			}
 
@@ -845,13 +845,18 @@ abstract class Sprig_Core {
 	 * Load all of the values in an associative array. Ignores all fields are
 	 * not in the model.
 	 *
-	 * @param   array    field => value pairs
-	 * @return  $this
+	 * @param array $values field => value pairs
+	 * @param bool  $strict Whether all keyed field names must exist
+	 *
+	 * @return Sprig $this
 	 */
-	public function values(array $values)
+	public function values(array $values, $strict = false)
 	{
-		// Remove all values which do not have a corresponding field
-		$values = array_intersect_key($values, $this->_fields);
+		if ( ! $strict )
+		{
+			// Remove all values which do not have a corresponding field
+			$values = array_intersect_key($values, $this->_fields);
+		}
 
 		foreach ($values as $field => $value)
 		{
