@@ -1033,20 +1033,26 @@ abstract class Sprig_Core {
 	/**
 	 * Return a single field input.
 	 *
-	 * @param   string  field name
-	 * @param   array   input attributes
-	 * @return  string
+	 * @param string $name field name
+	 * @param array  $attr input attributes
+	 *
+	 * @return string
 	 */
-	public function input($name, array $attr = NULL)
+	public function input($name, array $attr = null)
 	{
 		$field = $this->_fields[$name];
+		$value = $this->$name;
 
-		if ($attr === NULL)
+		if (null === $attr)
 		{
 			$attr = $field->attributes;
 		}
+		if (isset($attr['name']))
+		{
+			$name = $attr['name'];
+		}
 
-		return $field->input($name, $this->$name, $attr);
+		return $field->input($name, $value, $attr);
 	}
 
 	/**
