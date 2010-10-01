@@ -35,7 +35,8 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 				`year` INT,
 				`joined` INT,
 				`last_online` INT,
-				`last_breathed` TIMESTAMP
+				`last_breathed` TIMESTAMP,
+				`unused_column` INT NOT NULL default "0"
 			)',
 			'CREATE TABLE `test_names` (
 				`test_user_id` INT PRIMARY KEY AUTO_INCREMENT,
@@ -51,10 +52,10 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 			)',
 			
 			"INSERT INTO `test_users` VALUES
-				(1, 'Mr' , 1991, 1, 10, FROM_UNIXTIME(10)),
-				(2, 'Mrs', 1992, 3, 12, FROM_UNIXTIME(12)),
-				(3, 'Dr' , 1993, 5, 15, FROM_UNIXTIME(15)),
-				(4, 'Ms' , 1994, 5, 15, FROM_UNIXTIME(20))",
+				(1, 'Mr' , 1991, 1, 10, FROM_UNIXTIME(10), 1),
+				(2, 'Mrs', 1992, 3, 12, FROM_UNIXTIME(12), 1),
+				(3, 'Dr' , 1993, 5, 15, FROM_UNIXTIME(15), 1),
+				(4, 'Ms' , 1994, 5, 15, FROM_UNIXTIME(20), 1)",
 			"INSERT INTO `test_names` VALUES (1, 'one'), (2, 'two'), (3, 'three')",
 			"INSERT INTO `test_tags`  VALUES (1, 'abc'), (2, 'def'), (3, 'ghi'), (9, '01234')",
 			'INSERT INTO `test_tags_test_users` VALUES (1,1), (2,2), (3,3), (1,2), (1,3), (2,1), (2,3)',
@@ -629,6 +630,73 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 
 		// We should have 0 tags
 		$this->assertEquals(0, count($user->tags));
+	}
+
+	/**
+	 * Test the Sprig->values() method with default $intersect = true parameter
+	 *
+	 * @return null
+	 */
+	public function testValues()
+	{
+		$user = Sprig::factory('Test_User');
+		$values = array(
+			'id'    => 7,
+			'title' => 'Monsieur',
+			'year'  => 1492,
+			'foo'   => 'bar'
+		);
+		$user->values($values);
+
+		$this->assertEquals(3, count($user->changed()));
+		$this->assertTrue($user->changed('id'));
+		$this->assertTrue($user->changed('title'));
+		$this->assertTrue($user->changed('year'));
+		$this->assertFalse($user->changed('foo'));
+	}
+
+	/**
+	 * Test the Sprig->values() method with an $intersect array
+	 *
+	 * @return null
+	 */
+	public function testValuesIntersectArray()
+	{
+		$user = Sprig::factory('Test_User');
+		$values = array(
+			'id'    => 7,
+			'title' => 'Monsieur',
+			'year'  => 1492,
+			'foo'   => 'bar'
+		);
+		$intersect = array('title', 'year');
+		$user->values($values, $intersect);
+
+		$this->assertEquals(2, count($user->changed()));
+		$this->assertTrue($user->changed('title'));
+		$this->assertTrue($user->changed('year'));
+		$this->assertFalse($user->changed('id'));
+		$this->assertFalse($user->changed('foo'));
+	}
+
+	/**
+	 * Test the Sprig->values() method without any intersection safety
+	 *
+	 * @return null
+	 *
+	 * @expectedException Sprig_Exception
+	 */
+	public function testValuesNoIntersection()
+	{
+		$user = Sprig::factory('Test_User');
+		$values = array(
+			'id'    => 7,
+			'title' => 'Monsieur',
+			'year'  => 1492,
+			'foo'   => 'bar'
+		);
+		$intersect = false;
+		$user->values($values, $intersect);
 	}
 
 } // End Sprig

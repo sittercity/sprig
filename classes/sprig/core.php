@@ -419,7 +419,8 @@ abstract class Sprig_Core {
 					else
 						$pk = $model->pk();
 
-					$related = $model->values(array($pk => $value), true);
+					$model->$pk = $value;
+					$related = $model;
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
@@ -519,10 +520,11 @@ abstract class Sprig_Core {
 					if (isset($val[$pk]))
 					{
 						// Load the record so that changed values can be determined
-						$model->values(array($pk => $val[$pk]), true)->load();
+						$model->$pk = $val[$pk];
+						$model->load();
 					}
 
-					$value[$key] = $model->values($val, true);
+					$value[$key] = $model->values($val, false);
 				}
 			}
 
@@ -845,17 +847,34 @@ abstract class Sprig_Core {
 	 * Load all of the values in an associative array. Ignores all fields are
 	 * not in the model.
 	 *
-	 * @param array $values field => value pairs
-	 * @param bool  $strict Whether all keyed field names must exist
+	 * $intersect may be any of the following...
+	 *
+	 * Value              | Effect
+	 * true               | Only attempts assignment for existing Sprig fields
+	 * false              | Get Exception if fields do not correspond with keys
+	 * array('id', 'tag') | Only $values "id" and "tag" are applied to fields
+	 *
+	 * @param array      $values    field => value pairs
+	 * @param bool|array $intersect Intersect keys with existing field names
 	 *
 	 * @return Sprig $this
+	 *
+	 * @throws Sprig_Exception If $intersect == false and field does not exist
 	 */
-	public function values(array $values, $strict = false)
+	public function values(array $values, $intersect = true)
 	{
-		if ( ! $strict )
+		if ($intersect)
 		{
 			// Remove all values which do not have a corresponding field
-			$values = array_intersect_key($values, $this->_fields);
+			if (is_array($intersect))
+			{
+				$fields = array_flip($intersect);
+			}
+			else
+			{
+				$fields = $this->_fields;
+			}
+			$values = array_intersect_key($values, $fields);
 		}
 
 		foreach ($values as $field => $value)
