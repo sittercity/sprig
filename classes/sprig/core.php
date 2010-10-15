@@ -669,7 +669,7 @@ abstract class Sprig_Core {
 	 *
 	 * @return $this
 	 */
-	public function add($name, $value)
+	public function add_relationship($name, $value)
 	{
 		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
@@ -709,7 +709,7 @@ abstract class Sprig_Core {
 	 *
 	 * @return $this
 	 */
-	public function remove($name, $value)
+	public function remove_relationship($name, $value)
 	{
 		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
