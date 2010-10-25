@@ -748,6 +748,26 @@ abstract class Sprig_Core {
 	}
 
 	/**
+	 * Determines if this object has a relation
+	 * 
+	 * @param string field relation name to check
+	 * @param int    the value to compare
+	 *
+	 * @return bool
+	 */
+	public function related($name, $value)
+	{
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
+		{
+			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
+		}
+
+		// Make sure the field is accessed to load it's values
+		$this->$name;
+		return in_array($value, $this->_original[$name]);
+	}
+
+	/**
 	 * Returns the primary key of the model, optionally with a table name.
 	 *
 	 * @param   string  table name, TRUE for the model table
