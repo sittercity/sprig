@@ -392,7 +392,7 @@ abstract class Sprig_Core {
 							}
 							else
 							{
-								$fk = $model->fk();
+								$fk = $this->fk();
 							}
 
 							$query = DB::select()
