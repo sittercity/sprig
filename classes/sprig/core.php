@@ -1178,7 +1178,11 @@ abstract class Sprig_Core {
 		// Load changed values as search parameters
 		$changed = $this->changed();
 
-		if ( ! $query)
+		if ( ! $query AND $limit == 1 AND ! count($changed))
+		{
+			return $this;
+		}
+		elseif ( ! $query)
 		{
 			$query = DB::select();
 		}

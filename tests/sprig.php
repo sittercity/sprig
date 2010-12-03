@@ -186,15 +186,33 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	public function testLoadSingle()
 	{
 		$q_before = $this->getQueries();
-		
+
 		$user = Sprig::factory('Test_User');
 		$user = $user->load(DB::select());
-		
 		$this->assertEquals(1, $user->id);
-		
+
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
+
+		$user = Sprig::factory('Test_User', array('id' => 1));
+		$user = $user->load();
+		$this->assertEquals(1, $user->id);
+
+		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 	}
-	
+
+	/**
+	 * Tests loading an empty PK returns an unloaded model
+	 *
+	 * @return null
+	 */
+	public function testLoadEmptyPK()
+	{
+		$user = Sprig::factory('Test_User');
+		$this->assertFalse($user->loaded());
+		$user->load();
+		$this->assertFalse($user->loaded());
+	}
+
 	/**
 	 * Test the loading of multiple objects but with a limit to the number of results
 	 *
