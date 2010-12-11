@@ -15,6 +15,8 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public $editable = FALSE;
 
+	public $columns; // array(fk => pk)
+	
 	public function value($value)
 	{
 		if (empty($value) AND $this->empty)
@@ -23,26 +25,44 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 		}
 		elseif (is_object($value))
 		{
-			$model = Sprig::factory($this->model);
-
 			// Assume this is a Database_Result object
-			$value = $value->as_array(NULL, $model->pk());
+
+			$result = array();
+			foreach ($value as $model)
+			{
+				$row = array();
+				if(is_string($model->pk()))
+				{
+					// Single PK
+					$row[$model->pk()] = $model->{$model->pk()};
+				}
+				else
+				{
+					// Composite PK
+					foreach ($model->pk() as $pk)
+					{
+						$row[$pk] = $model->$pk;
+					}
+				}
+				$result[] = $row;
+			}
+			$value = $result;
 		}
 		else
 		{
 			// Value must always be an array
-			$value = (array) $value;
-		}
-
-		if ($value)
-		{
-			// Combine the value to make a mirrored array
-			$value = array_combine($value, $value);
-
-			foreach ($value as $id)
+			foreach($value as $idx1 => $arr)
 			{
-				// Convert the value to the proper type
-				$value[$id] = parent::value($id);
+				if(is_array($arr))
+				{
+					foreach($arr as $idx2 => $val)
+					{
+						if(is_numeric($val))
+						{
+							$value[$idx1][$idx2] = (int)$val; // Assume this is an integer type key of some kind
+						}
+					}
+				}
 			}
 		}
 
@@ -51,7 +71,19 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 
 	public function verbose($value)
 	{
-		return implode(', ', $this->value($value));
+		$value = $this->value($value);
+		
+		// $this->value($value) will return array
+		// The array can contain another array
+		foreach($value as $i => $row) {
+			if(is_array($row))
+			{
+				// implode each array
+				$value[$i] = implode('-', $row);
+			}
+		}
+		
+		return implode(', ', $value);
 	}
 
 	public function input($name, $value, array $attr = NULL)
@@ -59,11 +91,39 @@ class Sprig_Field_HasMany extends Sprig_Field_ForeignKey {
 		$model = Sprig::factory($this->model);
 
 		// All available options
-		$options = $model->select_list($model->pk());
+		if(isset($this->foreignkey_valuefield))
+			$options = $model->select_list($this->foreignkey_valuefield);
+		else
+			$options = $model->select_list($model->pk());
 
 		// Convert the selected options
-		$value = $this->value($value);
-
+		if(isset($this->foreignkey_valuefield))
+		{
+			$value_new = array();
+			foreach($this->value($value) as $array)
+			{
+				if(is_array($array))
+				{
+					// $array can be one or more primary keys for $model
+					// We'll use only the key "foreignkey_valuefield"
+					$value_new[$array[$this->foreignkey_valuefield]] = $array;
+				}
+				elseif(is_object($array))
+				{
+					$value_new[$array->{$this->foreignkey_valuefield}] = $array;
+				}
+				else
+				{
+					throw new Kohana_Exception('Unknown.');
+				}
+			}
+			$value = $value_new;
+		}
+		else
+		{
+			$value = $this->value($value);
+		}
+		
 		$inputs = array();
 		foreach ($options as $id => $label)
 		{

@@ -19,12 +19,31 @@ abstract class Sprig_Field_ForeignKey extends Sprig_Field_Char {
 
 	public $primary_key = NULL;
 
+	// TODO: Document, this one is undocumented
+	public $foreignkey_valuefield; // a field in the related model
+
 	public function value($value)
 	{
 		if (is_object($value))
 		{
 			// Assume this is a Sprig object
-			$value = $value->{$value->pk()};
+			$return = array();
+			if(isset($this->foreignkey_valuefield))
+			{
+				foreach($this->foreignkey_valuefield as $pk)
+				{
+					$return[] = $value->{$pk};
+				}
+			}
+			else
+			{
+				foreach($value->pk_as_array() as $pk)
+				{
+					$return[] = $value->{$pk};
+				}
+			}
+			$value = implode('-', $return);
+			//$value = $value->{$value->pk()};
 		}
 
 		return parent::value($value);

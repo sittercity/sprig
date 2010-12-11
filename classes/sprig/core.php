@@ -80,6 +80,8 @@ abstract class Sprig_Core {
 
 	// Changed object data
 	protected $_changed = array();
+	protected $_changed_relations_new      = array(); // New relations
+	protected $_changed_relations_deleted  = array(); // Deleted relations
 
 	// Related object data
 	protected $_related = array();
@@ -205,6 +207,11 @@ abstract class Sprig_Core {
 					else
 					{
 						$fk = Sprig::factory($field->model)->fk();
+						if(is_array($fk))
+						{
+							// Composite PK, using first FK
+							$fk = $fk[0];
+						}
 					}
 
 					$field->column = $fk;
@@ -212,6 +219,11 @@ abstract class Sprig_Core {
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
 					$field->column = $this->fk();
+					if(is_array($field->column))
+					{
+						// Composite PK, using first FK
+						$field->column = $field->column[0];
+					}
 				}
 				elseif ($field instanceof Sprig_Field_ForeignKey)
 				{
@@ -343,6 +355,7 @@ abstract class Sprig_Core {
 							else
 							{
 								// TODO this needs testing
+								// TOOD: composite PK support
 								$wrapped = array_map(
 									array($model->field($model->pk()),'_database_wrap'),
 									$value);
@@ -352,54 +365,116 @@ abstract class Sprig_Core {
 						}
 						else
 						{
-							// We can grab the PK from the field definition.
-							// If it doesn't exist, revert to the model choice
-							if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
+							if(is_array($this->pk()) && is_array($model->pk()))
 							{
-								$fk = $field->through.'.'.$field->left_foreign_key;
-								$fk2 = $field->through.'.'.$model->pk();
+								// One, not too good, solution for composite PK
+								
+								// I guess both have to have composite PK for it to work.
+								// Thats why we are checking both for "is_array"
+								$query = DB::select()
+									->from($model->table())
+									->join($field->through);
+						
+								$columns = array_combine($model->fk($field->through), $model->pk(TRUE));
+						
+								foreach ($columns as $fk => $pk)
+								{
+									$query->on($fk, '=', $pk);
+								}
+						
+								$columns = array_combine($this->fk($field->through), $this->pk());
+						
+								foreach ($columns as $fk => $pk)
+								{
+									$query->where($fk, '=', $this->$pk);
+								}
 							}
 							else
 							{
-								$fk = $this->fk($field->through);
-								$fk2 = $model->fk($field->through);
+								// We can grab the PK from the field definition.
+								// If it doesn't exist, revert to the model choice
+								if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
+								{
+									$fk = $field->through.'.'.$field->left_foreign_key;
+									$fk2 = $field->through.'.'.$model->pk();
+								}
+								else
+								{
+									$fk = $this->fk($field->through);
+									$fk2 = $model->fk($field->through);
+								}
+	
+								$query = DB::select()
+									->join($field->through)
+										->on($fk2, '=', $model->pk(TRUE))
+									->where(
+										$fk,
+										'=',
+										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 							}
-
-							$query = DB::select()
-								->join($field->through)
-									->on($fk2, '=', $model->pk(TRUE))
-								->where(
-									$fk,
-									'=',
-									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
 						}
 					}
 					else
 					{
 						if (isset($value))
 						{
-							$query = DB::select()
-								->where(
-									$model->pk(),
-									'=',
-									$field->_database_wrap($value));
-						}
-						else
-						{
-							if ( isset($field->foreign_key) AND $field->foreign_key)
+							if(is_string($model->pk()))
 							{
-								$fk = $field->foreign_key;
+								// Single PK
+								$query = DB::select()
+									->where(
+										$model->pk(),
+										'=',
+										$field->_database_wrap($value));
 							}
 							else
 							{
-								$fk = $model->fk();
+								// Composite PK
+								$query = DB::select();
+								foreach ($model->pk() as $pk)
+								{
+									$query->where($pk, '=', $value);
+								}
 							}
-
-							$query = DB::select()
-								->where(
-									$fk,
-									'=',
-									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
+						}
+						else
+						{
+							if(is_string($model->fk()) && is_string($this->_primary_key))
+							{
+								// Single PK
+								if ( isset($field->foreign_key) AND $field->foreign_key)
+								{
+									$fk = $field->foreign_key;
+								}
+								else
+								{
+									$fk = $model->fk();
+								}
+	
+								$query = DB::select()
+									->where(
+										$fk,
+										'=',
+										$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}));
+							}
+							else
+							{
+								// Composite PK
+								$query = DB::select();
+								if(isset($field->columns))
+								{
+									$columns = $field->columns;
+								}
+								else
+								{
+									$columns = array_combine($this->fk(), $this->pk());
+								}
+								
+								foreach ($columns as $fk => $pk)
+								{
+									$query->where($fk, '=', $this->$pk);
+								}
+							}
 						}
 					}
 
@@ -416,14 +491,77 @@ abstract class Sprig_Core {
 				{
 					if ( isset($field->primary_key) AND $field->primary_key)
 						$pk = $field->primary_key;
+					elseif (isset($field->columns))
+					{
+						// TODO: Might remove this:
+						
+						// Optional columns for field, fk=>local key
+						// The local key must be a field in the model
+						// Supports composite PK
+						$columns = $field->columns;
+					}
+					elseif(is_array($this->pk()))
+					{
+						// Original BelongsTo with support for composite PK
+						$columns = array_combine($this->pk(), $this->pk());
+					}
 					else
 						$pk = $model->pk();
 
-					$related = $model->values(array($pk => $value));
+					if(isset($columns))
+					{
+						$values = array();
+						foreach ($columns as $fk => $pk)
+						{
+							if(isset($this->_changed[$pk]))
+								$values[$fk] = $this->_changed[$pk];
+							else
+								$values[$fk] = $this->_original[$pk];
+						}
+						$related = $model->values($values);
+					}
+					else
+					{
+						$related = $model->values(array($pk => $value));
+					}
 				}
 				elseif ($field instanceof Sprig_Field_HasOne)
 				{
-					$related = $model->values(array($this->_model => $this->{$this->_primary_key}));
+					if(is_string($this->pk()))
+					{
+						// Single PK
+						$related = $model->values(array($this->_model => $this->{$this->_primary_key}));
+					}
+					else
+					{
+						// Composite PK
+						if(isset($field->columns))
+						{
+							// Optional columns for field, fk=>local key
+							// The local key must be a field in the model
+							$columns = $field->columns;
+						}
+						else
+						{
+							// Original HasOne
+							$columns = array();
+							foreach ($this->pk() as $pk)
+							{
+								$columns[$this->_model] = $this->_original[$pk];
+							}
+						}
+						
+						$values = array();
+						foreach ($columns as $fk => $pk)
+						{
+							if(isset($this->_changed[$pk]))
+								$values[$fk] = $this->_changed[$pk];
+							elseif(isset($this->_original[$pk]))
+								$values[$fk] = $this->_original[$pk];
+						}
+	
+						$related = $model->values($values);
+					}
 				}
 
 				$value = $this->_related[$name] = $related;
@@ -475,30 +613,64 @@ abstract class Sprig_Core {
 			{
 				$model = Sprig::factory($field->model);
 
-				if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
+				// Solution with composite PK requires both $model and $this to have
+				// composite PK.
+				if(!is_array($model->pk()) || !is_array($this->pk()))
 				{
-					$fk = $field->left_foreign_key;
+					// Single PK
+					if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
+					{
+						$fk = $field->left_foreign_key;
+					}
+					else
+					{
+						$fk = $model->fk();
+					}
+	
+					$result = DB::select(
+							array(
+								$model->field($model->pk())->_database_unwrap($fk),
+								$model->fk())
+							)
+						->from($field->through)
+						->where(
+							$fk,
+							'=',
+							$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
+						->execute($this->_db);
+	
+					// The original value for the relationship must be defined
+					// before we can tell if the value has been changed
+					$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
 				}
 				else
 				{
-					$fk = $model->fk();
+					// Composite PK
+					$query = DB::select()
+						->select_array(array_combine($model->fk($field->through), $model->pk()))
+						->from($model->table())
+						->join($field->through);
+	
+					$columns = array_combine($model->fk($field->through), $model->pk(TRUE));
+					foreach ($columns as $fk => $pk)
+					{
+						$query->on($fk, '=', $pk);
+					}
+	
+					$columns = array_combine($this->fk($field->through), $this->pk());
+	
+					foreach ($columns as $fk => $pk)
+					{
+						$query->where($fk, '=', $this->$pk);
+					}
+	
+					$result = $query->execute($this->_db);
+					$this->_original[$name] = array();
+					foreach($result as $row)
+					{
+						$this->_original[$name][] = $field->value($row);
+					}
 				}
-
-				$result = DB::select(
-						array(
-							$model->field($model->pk())->_database_unwrap($fk),
-							$model->fk())
-						)
-					->from($field->through)
-					->where(
-						$fk,
-						'=',
-						$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}))
-					->execute($this->_db);
-
-				// The original value for the relationship must be defined
-				// before we can tell if the value has been changed
-				$this->_original[$name] = $field->value($result->as_array(NULL, $model->fk()));
 			}
 		}
 		elseif ($field instanceof Sprig_Field_HasMany)
@@ -510,16 +682,56 @@ abstract class Sprig_Core {
 					$model = Sprig::factory($field->model);
 					$pk    = $model->pk();
 
-					if ( ! is_array($val))
+					if(is_string($pk))
 					{
-						// Assume the value is a primary key
-						$val = array($pk => $val);
+						// Single PK
+						if ( ! is_array($val))
+						{
+							// Assume the value is a primary key
+							$val = array($pk => $val);
+						}
+	
+						if (isset($val[$pk]))
+						{
+							// Load the record so that changed values can be determined
+							$model->values(array($pk => $val[$pk]))->load();
+						}
 					}
-
-					if (isset($val[$pk]))
+					else
 					{
-						// Load the record so that changed values can be determined
-						$model->values(array($pk => $val[$pk]))->load();
+						// Composite PK
+						if ( ! is_array($val))
+						{
+							if(count($pk) == 1)
+							{
+								// Assume the value is a primary key
+								$val = array(current($pk) => $val);
+							}
+							else
+							{
+								// No good
+								// TODO: Add some other error message
+								throw new Kohana_Exception('Failed!');
+							}
+						}
+						
+						// Is the primary set?
+						$all_pk_set   = true;
+						$pk_values    = array();
+						foreach($pk as $pk)
+						{
+							if (!isset($val[$pk])) {
+								$all_pk_set = false;
+							} else {
+								$pk_values[$pk] = $val[$pk];
+							}
+						}
+						
+						if($all_pk_set)
+						{
+							// Load the record so that changed values can be determined
+							$model->values($pk_values)->load();
+						}
 					}
 
 					$value[$key] = $model->values($val);
@@ -550,10 +762,37 @@ abstract class Sprig_Core {
 			$changed = call_user_func($field->hash_with, $changed);
 		}
 
-		$re_changed = (array_key_exists($name, $this->_changed) &&
-			$changed !== $this->_changed[$name]);
-		$original = $changed === $this->_original[$name];
-		if ($re_changed OR ! $original)
+		// Detection of change
+		if ($field instanceof Sprig_Field_HasMany)
+		{
+			// TODO: Check if multi dim arrays only apply to composite PK
+			 
+			// HasMany must compare to multi dimentional arrays
+			// If the columns arn't set in the same order, the normal check will not work correctly
+
+			$is_changed = false; // Default
+			if ($deleted = Sprig_Core::array_diff2($this->_original[$name], $value))
+			{
+				$is_changed = true; // Deleted relation
+				$this->_changed_relations_deleted[$name] = $deleted;
+			}
+			if ($new = Sprig_Core::array_diff2($value, $this->_original[$name]))
+			{
+				$is_changed = true; // New relation
+				$this->_changed_relations_new[$name] = $new;
+			}
+			$original = !$is_changed;
+		}
+		else
+		{
+			$re_changed = (array_key_exists($name, $this->_changed) &&
+				$changed !== $this->_changed[$name]);
+			$original = $changed === $this->_original[$name];
+			if($re_changed OR ! $original)
+				$is_changed = true;
+		}
+
+		if ($is_changed)
 		{
 			if (isset($this->_related[$name]))
 			{
@@ -576,6 +815,20 @@ abstract class Sprig_Core {
 				{
 					// Store the related object for later use
 					$this->_related[$name] = $value;
+				}
+				elseif($field instanceof Sprig_Field_HasMany AND is_array($value))
+				{
+					// Loading into objects if not already an object
+					$value2 = array();
+					foreach($value as $val)
+					{
+						if(is_object($val))
+							$value2[] = $val;
+						elseif(is_array($val))
+							$value2[] = Sprig::factory($this->_model, $val);
+					}
+					// Store the related object for later use
+					$this->_related[$name] = $value2;
 				}
 			}
 		}
@@ -749,7 +1002,7 @@ abstract class Sprig_Core {
 	 * Returns the primary key of the model, optionally with a table name.
 	 *
 	 * @param   string  table name, TRUE for the model table
-	 * @return  string
+	 * @return  mixed
 	 */
 	public function pk($table = NULL)
 	{
@@ -760,10 +1013,53 @@ abstract class Sprig_Core {
 				$table = $this->_table;
 			}
 
-			return $table.'.'.$this->_primary_key;
+			$table .= '.';
 		}
 
-		return $this->_primary_key;
+		if(is_string($this->_primary_key))
+		{
+			return $table.$this->_primary_key;
+		}
+		
+		$keys = array();
+		foreach ($this->_primary_key as $pk)
+		{
+			$keys[] = $table.$pk;
+		}
+
+		return $keys;
+	}
+	
+	/**
+	 * Returns the primary key of the model, optionally with a table name, as array
+	 *
+	 * @param   string  table name, TRUE for the model table
+	 * @return  array
+	 */
+	public function pk_as_array ($table = NULL)
+	{
+		$primarys = $this->pk($table);
+		if(is_string($primarys))
+			return array($primarys); // Single pk
+		else
+			return $primarys; // Composite pk
+	}
+	
+	/**
+	 * Return the columns each primary key has got
+	 * 
+	 * @param   string  table name, TRUE for the model table
+	 * @uses    pk()
+	 * @return  array
+	 */
+	public function pk_columns ($table = null)
+	{
+		$columns = array();
+		foreach($this->pk_as_array($table) as $pk)
+		{
+			$columns[] = $this->_fields[$pk]->column;
+		}
+		return $columns;
 	}
 
 	/**
@@ -774,8 +1070,6 @@ abstract class Sprig_Core {
 	 */
 	public function fk($table = NULL)
 	{
-		$key = $this->_model.'_'.$this->_primary_key;
-
 		if ($table)
 		{
 			if ($table === TRUE)
@@ -783,10 +1077,23 @@ abstract class Sprig_Core {
 				$table = $this->_table;
 			}
 
-			return $table.'.'.$key;
+			$table .= '.';
+		}
+		
+		// Single pk
+		if(is_string($this->_primary_key))
+		{
+			return $table.$this->_model.'_'.$this->_primary_key;
 		}
 
-		return $key;
+		// Composite pk
+		$keys = array();
+		foreach ($this->_primary_key as $pk)
+		{
+			$keys[] = $table.$this->_model.'_'.$pk;
+		}
+
+		return $keys;
 	}
 
 	/**
@@ -1006,6 +1313,32 @@ abstract class Sprig_Core {
 		{
 			return array_key_exists($field, $this->_changed);
 		}
+	}
+	
+	/**
+	 * Get new relations
+	 *
+	 * @return  Array
+	 */
+	public function changed_relations_new()
+	{
+		if(isset($this->_changed_relations_new))
+			return $this->_changed_relations_new;
+		else
+			return array();
+	}
+	
+	/**
+	 * Get deleted relations
+	 *
+	 * @return  Array
+	 */
+	public function changed_relations_deleted()
+	{
+		if(isset($this->_changed_relations_deleted))
+			return $this->_changed_relations_deleted;
+		else
+			return array();
 	}
 
 	/**
@@ -1299,13 +1632,36 @@ abstract class Sprig_Core {
 
 				foreach ($value as $id)
 				{
-					DB::insert($field->through, array($fk, $model->fk()))
-						->values(
-							array(
-								$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
-								$model->field($model->pk())->_database_wrap($id))
-							)
-						->execute($this->_db);
+					$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
+
+					if(is_array($id))
+					{
+						// Composite PK
+						// $id is an array with primary keys from $model
+	
+						$insert_values = array(); // Building values to be inserted
+						foreach (array_combine($this->fk(), $this->pk()) as $fk => $pk)
+						{
+							$insert_values[$fk] = $this->$pk; // Getting values from $this object
+						}
+						foreach(array_combine($model->fk(), $model->pk()) as $fk => $pk)
+						{
+							$insert_values[$fk] = $id[$pk]; // Getting values from $id array
+						}
+						$query->values($insert_values)
+							->execute($this->_db);
+					}
+					else
+					{
+						// Single PK
+						DB::insert($field->through, array($fk, $model->fk()))
+							->values(
+								array(
+									$this->_fields[$this->_primary_key]->_database_wrap($this->{$this->_primary_key}),
+									$model->field($model->pk())->_database_wrap($id))
+								)
+							->execute($this->_db);
+					}
 				}
 			}
 		}
@@ -1409,7 +1765,12 @@ abstract class Sprig_Core {
 					}
 
 					// Find old relationships that must be deleted
-					if ($old = array_diff($this->_original[$name], $value))
+					// Single PK
+					if (
+						!is_array($value) &&
+						!is_array($this->_orginal[$name]) &&
+						$old = array_diff($this->_original[$name], $value)
+						)
 					{
 						// TODO this needs testing
 						$old = array_map(array($this->_fields[$this->_primary_key],'_database_wrap'), $old);
@@ -1422,9 +1783,39 @@ abstract class Sprig_Core {
 							->where($right_fk, 'IN', $old)
 							->execute($this->_db);
 					}
+					// Composite pk
+					if (isset($this->_changed_relations_deleted[$name]))
+					{
+						$query = DB::delete($field->through);
+
+						$columns = array_combine($this->fk($field->through), $this->pk());
+						foreach ($columns as $fk => $pk)
+						{
+							$query->where($fk, '=', $this->$pk);
+						}
+
+						$columns = array_combine($model->fk(), $this->pk());
+						foreach ($columns as $fk => $pk)
+						{
+							// Extract old values
+							$old2 = array();
+							foreach($this->_changed_relations_deleted[$name] as $i => $valArr)
+							{
+								$old2[$i] = array($pk => $valArr[$pk]);
+							}
+							$query->where($fk, 'IN', $old2);
+						}
+
+						$query->execute($this->_db);
+					}
 
 					// Find new relationships that must be inserted
-					if ($new = array_diff($value, $this->_original[$name]))
+					// Single PK
+					if (
+						!is_array($value) &&
+						!is_array($this->_original[$name]) &&
+						$new = array_diff($value, $this->_original[$name])
+						)
 					{
 						foreach ($new as $id)
 						{
@@ -1435,6 +1826,25 @@ abstract class Sprig_Core {
 										$model->field($model->pk())->_database_wrap($id)
 									))
 								->execute($this->_db);
+						}
+					}
+					// Composite PK
+					if (isset($this->_changed_relations_new[$name]))
+					{
+						foreach ($this->_changed_relations_new[$name] as $id) // $id is an array with primary keys from $model
+						{
+							$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
+
+							$insert_values = array(); // Building values to be inserted
+							foreach (array_combine($this->fk(), $this->pk()) as $fk => $pk)
+							{
+								$insert_values[$fk] = $this->$pk; // Getting values from $this object
+							}
+							foreach(array_combine($model->fk(), $model->pk()) as $fk => $pk)
+							{
+								$insert_values[$fk] = $id[$pk]; // Getting values from $id array
+							}
+							$query->values($insert_values)->execute($this->_db);
 						}
 					}
 				}
@@ -1448,6 +1858,39 @@ abstract class Sprig_Core {
 		}
 
 		return $this;
+	}
+	
+	/**
+	 * Array diff for composite keys (array of arrays)
+	 * 
+	 * @return array Returns multidim array of those arrays in array1 that isn't in array2 
+	 */
+	public static function array_diff2($array1, $array2)
+	{
+		$notdiff_found_array1 = array();
+		$notdiff_found_array2 = array();
+		foreach($array1 as $idx1 => $arr1)
+		{
+			foreach($array2 as $idx2 => $arr2)
+			{			
+				if($arr1 == $arr2)
+				{
+					$notdiff_found_array1[$idx1] = $idx1;
+					$notdiff_found_array2[$idx2] = $idx2;
+				}
+			}
+		}
+		
+		$diff = array();
+		foreach(array_diff(array_keys($array1), $notdiff_found_array1) as $arr)
+		{
+			$diff[] = $array1[$arr];
+		}
+		/*foreach(array_diff(array_keys($array2), $notdiff_found_array2) as $arr)
+		{
+			$diff[] = $array2[$arr];
+		}*/
+		return $diff;
 	}
 
 	/**
@@ -1573,12 +2016,19 @@ abstract class Sprig_Core {
 	{
 		if ($array[$field])
 		{
-			$query = DB::select($this->_fields[$this->_primary_key]->column)
+			$query = DB::select();
+			
+			// pk_columns returns array to support composite PK
+			foreach($this->pk_columns() as $pk_col) {
+				$query->select($pk_col);
+			}
+			$query
 				->from($this->_table)
 				->where(
 					$this->_fields[$field]->column,
 					'=',
-					$this->_fields[$field]->_database_wrap($array[$field]))
+					$this->_fields[$field]->_database_wrap($array[$field]));
+			$query = $query
 				->execute($this->_db);
 
 			if (count($query))

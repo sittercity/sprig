@@ -11,6 +11,8 @@ class Sprig_Field_HasOne extends Sprig_Field_ForeignKey {
 
 	public $editable = FALSE;
 
+	public $columns; // array(fk => pk)
+
 	public function input($name, $value, array $attr = NULL)
 	{
 		$model = Sprig::factory($this->model);

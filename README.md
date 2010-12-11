@@ -281,12 +281,14 @@ Has the `model` property, the name of another Sprig model.
 A reference to another model by the child model primary key value. Represented by a select input.
 
 Has the `model` property, the name of another Sprig model.
+Also has `columns` for connecting primarykeys to foreign keys (array(keyBelongsTo=>KeyLocal, key2=>key2)). Default: array_combine($this->pk() => $this->pk());
 
 #### Sprig_Field_HasMany
 
 A reference to many other models by this model primary key value. Does not produce a form input.
 
 Has the `model` property, the name of another Sprig model.
+Also has `columns` for connecting primarykeys to foreign keys (array(fk=>pk, fk2=>pk2) where fk is in the other table and pk is the key in local table)
 
 #### Sprig_Field_ManyToMany
 

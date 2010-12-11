@@ -4,6 +4,8 @@ class Sprig_Field_BelongsTo extends Sprig_Field_ForeignKey {
 
 	public $in_db = TRUE;
 
+	public $columns; // array(fk => pk)
+	
 	public function input($name, $value, array $attr = NULL)
 	{
 		$model = Sprig::factory($this->model);
