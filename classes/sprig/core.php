@@ -790,6 +790,8 @@ abstract class Sprig_Core {
 			$original = $changed === $this->_original[$name];
 			if($re_changed OR ! $original)
 				$is_changed = true;
+			else
+				$is_changed = false;
 		}
 
 		if ($is_changed)
