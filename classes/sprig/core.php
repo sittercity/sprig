@@ -1607,7 +1607,10 @@ abstract class Sprig_Core {
 				}
 			}
 		}
-		elseif ($this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto)
+		elseif (
+			!is_null($this->_primary_key) &&
+			$this->_fields[$this->_primary_key] instanceof Sprig_Field_Auto
+		)
 		{
 			$this->{$this->_primary_key} = $id;
 		}
