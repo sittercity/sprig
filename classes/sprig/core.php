@@ -615,7 +615,11 @@ abstract class Sprig_Core {
 
 				// Solution with composite PK requires both $model and $this to have
 				// composite PK.
-				if(!is_array($model->pk()) || !is_array($this->pk()))
+				if(is_null($this->pk()))
+				{
+					$this->_original[$name] = array();
+				}
+				elseif(!is_array($model->pk()) || !is_array($this->pk()))
 				{
 					// Single PK
 					if ( isset($field->left_foreign_key) AND $field->left_foreign_key)
@@ -1003,11 +1007,17 @@ abstract class Sprig_Core {
 	/**
 	 * Returns the primary key of the model, optionally with a table name.
 	 *
+	 * Returns array if primary key is composite PK (multiple PKs), returns
+	 * string if there is only one PK and returns null if there is no PKs.
+	 *
 	 * @param   string  table name, TRUE for the model table
-	 * @return  mixed
+	 * @return  mixed   null, string, array
 	 */
 	public function pk($table = NULL)
 	{
+		if (is_null($this->_primary_key))
+			return null;
+		
 		if ($table)
 		{
 			if ($table === TRUE)
@@ -1034,12 +1044,17 @@ abstract class Sprig_Core {
 	
 	/**
 	 * Returns the primary key of the model, optionally with a table name, as array
+	 * 
+	 * Returns empty array if primary key is null
 	 *
 	 * @param   string  table name, TRUE for the model table
 	 * @return  array
 	 */
 	public function pk_as_array ($table = NULL)
 	{
+		if (is_null($this->_primary_key))
+			return array();
+		
 		$primarys = $this->pk($table);
 		if(is_string($primarys))
 			return array($primarys); // Single pk
@@ -1066,12 +1081,18 @@ abstract class Sprig_Core {
 
 	/**
 	 * Returns the foreign key of the model, optionally with a table name.
+	 * 
+	 * Returns array if primary key is composite PK (multiple PKs), returns
+	 * string if there is only one PK and returns null if there is no PKs.
 	 *
 	 * @param   string  table name, TRUE for the model table
-	 * @return  string
+	 * @return  mixed   null, string, array
 	 */
 	public function fk($table = NULL)
 	{
+		if(is_null($this->_primary_key))
+			return null;
+		
 		if ($table)
 		{
 			if ($table === TRUE)
@@ -1578,7 +1599,15 @@ abstract class Sprig_Core {
 			{
 				if ($field instanceof Sprig_Field_ManyToMany)
 				{
-					$relations[$name] = $value;
+					$model = Sprig::factory($field->model);
+					
+					if( 
+						!is_null($this->pk()) && // Must have primary key
+						!is_null($model->pk())    // in both models
+					)
+					{
+						$relations[$name] = $value;
+					}
 				}
 
 				// Skip all auto-increment fields or where in_db is false
@@ -1705,8 +1734,14 @@ abstract class Sprig_Core {
 				{
 					if ($field instanceof Sprig_Field_ManyToMany)
 					{
-						// Relationships have been changed
-						$relations[$name] = $value;
+						$model = Sprig::factory($field->model);
+						if( 
+							!is_null($this->pk()) && // Must have primary key
+							!is_null($model->pk())    // in both models
+						)
+						{
+							$relations[$name] = $value;
+						}
 					}
 
 					// Skip all fields that are not in the database
