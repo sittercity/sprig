@@ -467,7 +467,7 @@ abstract class Sprig_Core {
 								}
 								else
 								{
-									$columns = array_combine($this->fk(), $this->pk());
+									$columns = array_combine($this->fk_as_array(), $this->pk_as_array());
 								}
 								
 								foreach ($columns as $fk => $pk)
@@ -831,7 +831,7 @@ abstract class Sprig_Core {
 						if(is_object($val))
 							$value2[] = $val;
 						elseif(is_array($val))
-							$value2[] = Sprig::factory($this->_model, $val);
+							$value2[] = Sprig::factory($this->field($name)->model, $val);
 					}
 					// Store the related object for later use
 					$this->_related[$name] = $value2;
@@ -1117,6 +1117,26 @@ abstract class Sprig_Core {
 		}
 
 		return $keys;
+	}
+	
+	/**
+	 * Returns the foreign key of the model, optionally with a table name, as array
+	 * 
+	 * Returns empty array if foreign key is null
+	 *
+	 * @param   string  table name, TRUE for the model table
+	 * @return  array
+	 */
+	public function fk_as_array ($table = NULL)
+	{
+		if (is_null($this->_primary_key))
+			return array();
+		
+		$foreigns = $this->fk($table);
+		if(is_string($foreigns))
+			return array($foreigns); // Single fk
+		else
+			return $foreigns; // Composite fk
 	}
 
 	/**
@@ -1666,13 +1686,15 @@ abstract class Sprig_Core {
 
 				foreach ($value as $id)
 				{
-					$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
-
 					if(is_array($id))
 					{
-						// Composite PK
-						// $id is an array with primary keys from $model
-	
+						/*
+						 * Composite PK
+						 * 
+						 * $id should be an array with primary keys from $model
+						 * Please see composite PK tests for example 
+						 */
+						$query = DB::insert($field->through, array_merge($this->fk(), $model->fk()));
 						$insert_values = array(); // Building values to be inserted
 						foreach (array_combine($this->fk(), $this->pk()) as $fk => $pk)
 						{
@@ -1688,6 +1710,8 @@ abstract class Sprig_Core {
 					else
 					{
 						// Single PK
+						
+						// The insert below might fail if your input is not an array but your PKs are
 						DB::insert($field->through, array($fk, $model->fk()))
 							->values(
 								array(
