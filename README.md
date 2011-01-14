@@ -296,3 +296,50 @@ Has the `model` property, the name of another Sprig model.
 
 Has the `through` property, the name of the pivot table. By default, uses both model names, sorted alphabetically and combined with an underscore. For example: a many-to-many relationship between `Model_Post` and `Model_Tag` would default to `post_tag` as the table name.
 
+## Many To Many Relations
+
+There's a few ways to add and remove many to many relations. The first is to use the raw field names:
+
+    $post->foos = array(1, 2, 3);
+
+This will _completely overwrite_ all the relationships for this model. The only relations to this model will be 1, 2 and 3.
+
+The second way is to use the relate() and unrelate() methods:
+
+    $post->relate('foos', 1);
+
+You can also pass an object:
+
+    $post->relate('foos', $foo);
+
+Or an array of ids:
+
+    $post->relate('foos', array(1, 2, 3));
+
+Or an array of objects!
+
+    $post->relate('foos', array($foo1, $foo2, $foo3));
+
+### Removing Relations
+
+To remove a relation, use the same techniques as above.
+
+    $post->foos = array(1, 2, 3);
+
+This will _completely overwrite_ all the relationships for this model. The only relations to this model will be 1, 2 and 3.
+
+Use unrelate() instead of relate():
+
+    $post->unrelate('foos', 1);
+
+You can also pass an object:
+
+    $post->unrelate('foos', $foo);
+
+Or an array of ids:
+
+    $post->unrelate('foos', array(1, 2, 3));
+
+Or an array of objects!
+
+    $post->unrelate('foos', array($foo1, $foo2, $foo3));

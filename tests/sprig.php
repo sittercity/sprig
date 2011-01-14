@@ -186,15 +186,33 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	public function testLoadSingle()
 	{
 		$q_before = $this->getQueries();
-		
+
 		$user = Sprig::factory('Test_User');
 		$user = $user->load(DB::select());
-		
 		$this->assertEquals(1, $user->id);
-		
+
 		$this->assertQueryCountIncrease(1, $q_before, $this->getQueries());
+
+		$user = Sprig::factory('Test_User', array('id' => 1));
+		$user = $user->load();
+		$this->assertEquals(1, $user->id);
+
+		$this->assertQueryCountIncrease(2, $q_before, $this->getQueries());
 	}
-	
+
+	/**
+	 * Tests loading an empty PK returns an unloaded model
+	 *
+	 * @return null
+	 */
+	public function testLoadEmptyPK()
+	{
+		$user = Sprig::factory('Test_User');
+		$this->assertFalse($user->loaded());
+		$user->load();
+		$this->assertFalse($user->loaded());
+	}
+
 	/**
 	 * Test the loading of multiple objects but with a limit to the number of results
 	 *
@@ -567,6 +585,20 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 	}
 
 	/**
+	 * Tests new object relationships
+	 *
+	 * @return null
+	 */
+	public function test_new_relate()
+	{
+		$user = Sprig::factory('Test_User', array('id' => 4))->load();
+		$user->relate('tags', 1)->update();
+		$this->assertEquals(1, count($user->tags));
+
+		$user->unrelate('tags', 1)->update();
+	}
+
+	/**
 	 * Tests creating and removing relationships
 	 *
 	 * @return null
@@ -579,39 +611,39 @@ class UnitTest_Sprig extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(0, count($user->tags));
 
 		// Add with an integer
-		$user->add('tags', 1)->update();
+		$user->relate('tags', 1)->update();
 
 		// We should have 1 tags
 		$this->assertEquals(1, count($user->tags));
 
 		// Add with an object
 		$tag = Sprig::factory('Test_Tag', array('id' => 2))->load();
-		$user->add('tags', $tag)->update();
+		$user->relate('tags', $tag)->update();
 
 		// We should have 2 tags
 		$this->assertEquals(2, count($user->tags));
 
 		// Add with an array
-		$user->add('tags', array(3))->update();
+		$user->relate('tags', array(3))->update();
 
 		// We should have 3 tags
 		$this->assertEquals(3, count($user->tags));
 
 		// Remove with an integer
-		$user->remove('tags', 1)->update();
+		$user->unrelate('tags', 1)->update();
 
 		// We should have 2 tags
 		$this->assertEquals(2, count($user->tags));
 
 		// Remove with an object
 		$tag = Sprig::factory('Test_Tag', array('id' => 2))->load();
-		$user->remove('tags', $tag)->update();
+		$user->unrelate('tags', $tag)->update();
 
 		// We should have 1 tags
 		$this->assertEquals(1, count($user->tags));
 
 		// Remove with an array
-		$user->remove('tags', array(3));
+		$user->unrelate('tags', array(3));
 
 		// We should have 0 tags
 		$this->assertEquals(0, count($user->tags));

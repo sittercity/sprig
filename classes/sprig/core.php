@@ -9,7 +9,7 @@
  */
 abstract class Sprig_Core {
 
-	const VERSION = '1.1.1';
+	const VERSION = '1.2';
 
 	// Model many-to-many relations
 	protected static $_relations;
@@ -392,7 +392,7 @@ abstract class Sprig_Core {
 							}
 							else
 							{
-								$fk = $model->fk();
+								$fk = $this->fk();
 							}
 
 							$query = DB::select()
@@ -669,9 +669,9 @@ abstract class Sprig_Core {
 	 *
 	 * @return $this
 	 */
-	public function add($name, $value)
+	public function relate($name, $value)
 	{
-		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
 			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
 		}
@@ -694,7 +694,7 @@ abstract class Sprig_Core {
 			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
-		$this->$name = $this->_original[$name]+$values;
+		$this->$name = arr::get($this->_original, $name, array())+$values;
 
 		return $this;
 	}
@@ -709,9 +709,9 @@ abstract class Sprig_Core {
 	 *
 	 * @return $this
 	 */
-	public function remove($name, $value)
+	public function unrelate($name, $value)
 	{
-		if ( ! isset($this->_original[$name]) OR ! is_array($this->_original[$name]))
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
 		{
 			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
 		}
@@ -734,6 +734,8 @@ abstract class Sprig_Core {
 			throw new Sprig_Exception('Invalid data type: :value', array(':value' => $value));
 		}
 
+		// Make sure the field is accessed to load it's values
+		$this->$name;
 		$original = $this->_original[$name];
 		foreach ($values as $value)
 		{
@@ -743,6 +745,26 @@ abstract class Sprig_Core {
 		$this->$name = $original;
 
 		return $this;
+	}
+
+	/**
+	 * Determines if this object has a relation
+	 * 
+	 * @param string field relation name to check
+	 * @param int    the value to compare
+	 *
+	 * @return bool
+	 */
+	public function related($name, $value)
+	{
+		if ( ! isset($this->_fields[$name]) OR ! ($this->_fields[$name] instanceof Sprig_Field_HasMany))
+		{
+			throw new Sprig_Exception('Unknown relationship: :name', array(':name' => $name));
+		}
+
+		// Make sure the field is accessed to load it's values
+		$this->$name;
+		return in_array($value, $this->_original[$name]);
 	}
 
 	/**
@@ -1038,13 +1060,18 @@ abstract class Sprig_Core {
 	public function input($name, array $attr = NULL)
 	{
 		$field = $this->_fields[$name];
+		$value = $this->$name;
 
 		if ($attr === NULL)
 		{
 			$attr = $field->attributes;
 		}
+		if (isset($attr['name']))
+		{
+			$name = $attr['name'];
+		}
 
-		return $field->input($name, $this->$name, $attr);
+		return $field->input($name, $value, $attr);
 	}
 
 	/**
@@ -1151,7 +1178,11 @@ abstract class Sprig_Core {
 		// Load changed values as search parameters
 		$changed = $this->changed();
 
-		if ( ! $query)
+		if ( ! $query AND $limit == 1 AND ! count($changed))
+		{
+			return $this;
+		}
+		elseif ( ! $query)
 		{
 			$query = DB::select();
 		}
