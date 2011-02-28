@@ -251,17 +251,17 @@ abstract class Sprig_Core {
 				if ($field->choices AND ! isset($field->rules['in_array']))
 				{
 					// Field must be one of the available choices
-					$field->rules['in_array'] = array(array_keys($field->choices));
+					$field->rules['in_array'] = array(':value', array_keys($field->choices));
 				}
 
 				if ( ! empty($field->min_length))
 				{
-					$field->rules['min_length'] = array($field->min_length);
+					$field->rules['min_length'] = array(':value', $field->min_length);
 				}
 
 				if ( ! empty($field->max_length))
 				{
-					$field->rules['max_length'] = array($field->max_length);
+					$field->rules['max_length'] = array(':value', $field->max_length);
 				}
 			}
 
@@ -1557,7 +1557,7 @@ abstract class Sprig_Core {
 			$data = $this->changed();
 		}
 
-		$data = Validate::factory($data);
+		$data = Validation::factory($data);
 
 		foreach ($this->_fields as $name => $field)
 		{
@@ -1569,25 +1569,23 @@ abstract class Sprig_Core {
 
 			$data->label($name, $field->label);
 
-			if ($field->filters)
-			{
-				$data->filters($name, $field->filters);
-			}
-
 			if ($field->rules)
 			{
-				$data->rules($name, $field->rules);
-			}
-
-			if ($field->callbacks)
-			{
-				$data->callbacks($name, $field->callbacks);
+				foreach ($field->rules as $rule => $rule_data)
+				{
+					if ($rule_data[0]) // if the rule has parameters
+					{
+						$data->rule($name, $rule, array($rule_data[0], Arr::get($rule_data, 1)));
+					}
+					else
+						$data->rule($name, $rule);
+				}
 			}
 		}
 
 		if ( ! $data->check())
 		{
-			throw new Validate_Exception($data);
+			throw new Validation_Exception($data);
 		}
 
 		return $data->as_array();
@@ -1596,11 +1594,11 @@ abstract class Sprig_Core {
 	/**
 	 * Callback for validating unique fields.
 	 *
-	 * @param   object  Validate array
+	 * @param   object  Validation array
 	 * @param   string  field name
 	 * @return  void
 	 */
-	public function _unique_field(Validate $array, $field)
+	public function _unique_field(Validation $array, $field)
 	{
 		if ($array[$field])
 		{
