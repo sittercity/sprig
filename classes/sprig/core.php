@@ -1569,13 +1569,21 @@ abstract class Sprig_Core {
 
 			$data->label($name, $field->label);
 
+			if ($field->filters)
+			{
+				foreach ($field->filters as $filter => $whoknows)
+				{
+					$data[$name] = call_user_func($filter, $data[$name]);
+				}
+			}
+
 			if ($field->rules)
 			{
 				foreach ($field->rules as $rule => $rule_data)
 				{
 					if ($rule_data[0]) // if the rule has parameters
 					{
-						$data->rule($name, $rule, array($rule_data[0], Arr::get($rule_data, 1)));
+						$data->rule($name, $rule, $rule_data);
 					}
 					else
 						$data->rule($name, $rule);
