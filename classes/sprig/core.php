@@ -1244,7 +1244,6 @@ abstract class Sprig_Core {
 		}
 	}
 
-
 	/**
 	 * Create a new record using the current data.
 	 *
@@ -1279,6 +1278,11 @@ abstract class Sprig_Core {
 
 				// Skip all auto-increment fields or where in_db is false
 				continue;
+			}
+
+			if ($field instanceof Sprig_Field_Password AND isset($field->hash_with_on_update))
+			{
+				$value = call_user_func($field->hash_with_on_update, $value);
 			}
 
 			// Change the field name to the column name
@@ -1381,6 +1385,11 @@ abstract class Sprig_Core {
 
 					// Skip all fields that are not in the database
 					continue;
+				}
+
+				if ($field instanceof Sprig_Field_Password AND isset($field->hash_with_on_update))
+				{
+					$value = call_user_func($field->hash_with_on_update, $value);
 				}
 
 				// Change the field name to the column name
