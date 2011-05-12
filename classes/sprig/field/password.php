@@ -9,7 +9,9 @@
  */
 class Sprig_Field_Password extends Sprig_Field_Char {
 
-	public $hash_with = 'sha1';
+	public $hash_with = NULL;
+
+	public $hash_with_on_update = NULL;
 
 	public function input($name, $value, array $attr = NULL)
 	{
