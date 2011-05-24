@@ -1589,6 +1589,14 @@ abstract class Sprig_Core {
 						$data->rule($name, $rule);
 				}
 			}
+
+			if ($field->callbacks)
+			{
+				foreach ($field->callbacks as $callback)
+				{
+					$data->rule($name, $callback, array(':validation', ':field'));
+				}
+			}
 		}
 
 		if ( ! $data->check())
