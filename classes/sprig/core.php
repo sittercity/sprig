@@ -280,7 +280,7 @@ abstract class Sprig_Core {
 	 */
 	public function __toString()
 	{
-		return $this->_model;
+		return (string) $this->_model;
 	}
 
 	/**
